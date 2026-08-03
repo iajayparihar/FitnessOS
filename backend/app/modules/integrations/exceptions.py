@@ -1,0 +1,2 @@
+class WebhookNotFound(Exception):
+    pass

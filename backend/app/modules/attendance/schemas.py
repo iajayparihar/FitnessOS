@@ -1,0 +1,2 @@
+class CheckInRequest:
+    pass

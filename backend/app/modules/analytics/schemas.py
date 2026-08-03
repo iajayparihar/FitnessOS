@@ -1,0 +1,2 @@
+class AuditLogResponse:
+    pass

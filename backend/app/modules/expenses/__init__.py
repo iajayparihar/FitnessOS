@@ -1,0 +1,3 @@
+''
+Expenses module package
+''

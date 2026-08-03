@@ -1,0 +1,2 @@
+class TrainerNotFound(Exception):
+    pass

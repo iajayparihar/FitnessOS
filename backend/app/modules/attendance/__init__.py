@@ -1,0 +1,3 @@
+''
+Attendance module package
+''

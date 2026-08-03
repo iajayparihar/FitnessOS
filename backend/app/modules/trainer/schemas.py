@@ -1,0 +1,2 @@
+class TrainerCreate:
+    pass

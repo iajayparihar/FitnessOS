@@ -1,0 +1,3 @@
+''
+Subscriptions module package
+''

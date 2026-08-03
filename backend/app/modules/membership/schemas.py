@@ -1,0 +1,2 @@
+class MemberCreate:
+    pass

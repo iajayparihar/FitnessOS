@@ -1,0 +1,2 @@
+class WebhookCreate:
+    pass

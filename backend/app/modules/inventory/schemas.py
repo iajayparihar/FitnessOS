@@ -1,0 +1,2 @@
+class ProductCreate:
+    pass

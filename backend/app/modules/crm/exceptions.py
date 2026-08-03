@@ -1,0 +1,2 @@
+class LeadNotFound(Exception):
+    pass

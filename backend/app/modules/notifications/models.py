@@ -90,7 +90,7 @@ class NotificationTemplate(Base, AuditMixin):
         )
 
 
-class Notification(Base, TimestampMixin):
+class Notification(Base, AuditMixin):
     __tablename__ = "notifications"
 
     id: Mapped[uuid.UUID] = mapped_column(

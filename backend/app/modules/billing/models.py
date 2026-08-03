@@ -20,6 +20,7 @@ from sqlalchemy import (
     CheckConstraint,
     Index,
     func,
+    text,
     Enum as sa_Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
@@ -224,7 +225,12 @@ class Invoice(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("organization_id", "invoice_number", name="uq_invoices_org_number"),
+        UniqueConstraint(
+            "organization_id",
+            "invoice_number",
+            name="uq_invoices_org_number",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         CheckConstraint("subtotal_cents >= 0", name="ck_invoices_subtotal_non_negative"),
         CheckConstraint("discount_cents >= 0", name="ck_invoices_discount_non_negative"),
         CheckConstraint("tax_cents >= 0", name="ck_invoices_tax_non_negative"),

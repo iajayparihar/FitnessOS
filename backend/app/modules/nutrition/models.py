@@ -20,6 +20,7 @@ from sqlalchemy import (
     CheckConstraint,
     Index,
     func,
+    text,
     Enum as sa_Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
@@ -66,6 +67,7 @@ class FoodItem(Base, AuditMixin):
             "organization_id",
             func.lower(name),
             name="uq_food_items_org_name",
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("organization_id"),
         Index(

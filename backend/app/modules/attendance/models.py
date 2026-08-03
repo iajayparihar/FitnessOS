@@ -219,10 +219,6 @@ class AttendanceQRToken(Base, TimestampMixin):
         {"extend_existing": True},
     )
 
-    @classmethod
-    def not_deleted(cls):
-        return cls.deleted_at.is_(None)
-
     @property
     def is_valid(self) -> bool:
         return self.used_at is None and self.expires_at > datetime.utcnow()

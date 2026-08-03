@@ -20,6 +20,7 @@ from sqlalchemy import (
     CheckConstraint,
     Index,
     func,
+    text,
     Enum as sa_Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
@@ -196,6 +197,7 @@ class StockLocation(Base, AuditMixin):
             "organization_id",
             "code",
             name="uq_stock_locations_org_code",
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("organization_id"),
         {"extend_existing": True},
@@ -316,7 +318,12 @@ class PurchaseOrder(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("organization_id", "order_number", name="uq_purchase_orders_org_number"),
+        UniqueConstraint(
+            "organization_id",
+            "order_number",
+            name="uq_purchase_orders_org_number",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         CheckConstraint("total_cents >= 0", name="ck_purchase_orders_total_non_negative"),
         Index("organization_id"),
         {"extend_existing": True},

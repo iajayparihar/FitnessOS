@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import (
     String,
@@ -195,6 +195,48 @@ class Member(Base, AuditMixin):
         "Member",
         foreign_keys="Member.referred_by",
         back_populates="referrer",
+    )
+
+    if TYPE_CHECKING:
+        from app.modules.attendance.models import AttendanceRecord
+        from app.modules.trainer.models import WorkoutAssignment
+        from app.modules.nutrition.models import NutritionPlan, BodyMetrics
+        from app.modules.billing.models import Invoice, Payment
+
+    attendance_records: Mapped[list["AttendanceRecord"]] = relationship(
+        "AttendanceRecord",
+        back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
+    workout_assignments: Mapped[list["WorkoutAssignment"]] = relationship(
+        "WorkoutAssignment",
+        back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
+    nutrition_plans: Mapped[list["NutritionPlan"]] = relationship(
+        "NutritionPlan",
+        back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
+    body_metrics: Mapped[list["BodyMetrics"]] = relationship(
+        "BodyMetrics",
+        back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
+    invoices: Mapped[list["Invoice"]] = relationship(
+        "Invoice",
+        back_populates="member",
+        cascade="all, delete-orphan",
+    )
+
+    payments: Mapped[list["Payment"]] = relationship(
+        "Payment",
+        back_populates="member",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (

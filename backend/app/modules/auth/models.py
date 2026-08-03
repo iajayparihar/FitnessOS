@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import (
     String,
@@ -83,6 +83,24 @@ class User(Base, AuditMixin):
         "Session",
         back_populates="user",
         cascade="all, delete-orphan",
+    )
+
+    if TYPE_CHECKING:
+        from app.modules.trainer.models import Trainer
+        from app.modules.expenses.models import PayrollEmployee
+
+    trainer_profile: Mapped[Optional["Trainer"]] = relationship(
+        "Trainer",
+        primaryjoin="User.id == foreign(Trainer.user_id)",
+        uselist=False,
+        viewonly=True,
+    )
+
+    payroll_employee: Mapped[Optional["PayrollEmployee"]] = relationship(
+        "PayrollEmployee",
+        primaryjoin="User.id == foreign(PayrollEmployee.user_id)",
+        uselist=False,
+        viewonly=True,
     )
 
     __table_args__ = (

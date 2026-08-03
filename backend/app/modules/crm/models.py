@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import (
     String,
@@ -166,6 +166,16 @@ class Lead(Base, AuditMixin):
         "LeadActivity",
         back_populates="lead",
         cascade="all, delete-orphan",
+    )
+
+    if TYPE_CHECKING:
+        from app.modules.membership.models import Member
+
+    converted_member: Mapped[Optional["Member"]] = relationship(
+        "Member",
+        foreign_keys="Lead.converted_member_id",
+        viewonly=True,
+        uselist=False,
     )
 
     __table_args__ = (

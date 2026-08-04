@@ -1,10 +1,25 @@
 [project]
-name = 'fitness_business_os'
-version = '0.1.0'
+name = "fitness_business_os"
+version = "0.1.0"
+description = "Fitness Business OS backend"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.18.5",
+    "docformatter>=1.7.8",
+    "fastapi>=0.141.1",
+    "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0.51",
+    "uvicorn>=0.52.1",
+    "asyncpg>=0.31.0",
+]
 
 [build-system]
-requires = ['setuptools>=61.0']
-build-backend = 'setuptools.build_meta'
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [tool.black]
 line-length = 88

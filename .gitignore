@@ -1,0 +1,87 @@
+.idea
+.ipynb_checkpoints
+.mypy_cache
+.vscode
+__pycache__
+.pytest_cache
+htmlcov
+dist
+site
+site_zensical_src
+.coverage*
+coverage.xml
+.netlify
+test.db
+log.txt
+Pipfile.lock
+env3.*
+env
+docs_build
+site_build
+venv
+docs.zip
+archive.zip
+
+# vim temporary files
+*~
+.*.sw?
+.cache
+
+# macOS
+.DS_Store
+
+.codspeed
+
+# Python virtualenvs and environment files
+.venv/
+venv/
+.env
+.env.*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Databases and logs
+*.sqlite3
+*.log
+logs/
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.coverage
+coverage.xml
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+pip-wheel-metadata/
+
+# Editor directories and files
+.idea/
+.vscode/
+.history/
+.cache/
+
+# Infrastructure
+.terraform/
+.terraform.lock.hcl
+.serverless/
+.parcel-cache/
+
+# Frontend
+node_modules/
+frontend/build/
+.next/
+.nuxt/
+
+# Misc
+.ipynb_checkpoints/
+*.pot
+*.mo

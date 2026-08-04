@@ -5,3 +5,15 @@ version = '0.1.0'
 [build-system]
 requires = ['setuptools>=61.0']
 build-backend = 'setuptools.build_meta'
+
+[tool.black]
+line-length = 88
+
+[tool.docformatter]
+recursive = true
+wrap-summaries = 88
+wrap-descriptions = 88
+blank = true
+pre-summary-newline = true
+make-summary-multi-line = true
+close-quotes-on-newline = true

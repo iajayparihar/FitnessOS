@@ -26,7 +26,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 from app.core.enums import BillingCycle, Gender
 
 
@@ -94,7 +99,9 @@ class MembershipPlan(Base, AuditMixin):
     max_freeze_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -156,7 +163,9 @@ class Member(Base, AuditMixin):
         ForeignKey("members.id", ondelete="SET NULL"),
         default=None,
     )
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -240,7 +249,9 @@ class Member(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("organization_id", "member_code", name="uq_members_org_member_code"),
+        UniqueConstraint(
+            "organization_id", "member_code", name="uq_members_org_member_code"
+        ),
         Index("organization_id"),
         Index(
             "organization_id",
@@ -309,9 +320,7 @@ class MemberProfile(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<MemberProfile(id={self.id}, member_id={self.member_id})>"
-        )
+        return f"<MemberProfile(id={self.id}, member_id={self.member_id})>"
 
 
 class MemberEmergencyContact(Base, TimestampMixin):
@@ -395,7 +404,9 @@ class MemberDocument(Base, TimestampMixin):
         ForeignKey("users.id", ondelete="SET NULL"),
         default=None,
     )
-    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     member: Mapped[Member] = relationship(
         "Member",
@@ -453,10 +464,16 @@ class Membership(Base, AuditMixin):
     )
     auto_renew: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     freeze_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    total_freeze_days_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    coupon_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), default=None)
+    total_freeze_days_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    coupon_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), default=None
+    )
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     cancelled_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -484,8 +501,12 @@ class Membership(Base, AuditMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("ends_on IS NULL OR ends_on >= starts_on", name="ck_memberships_date_order"),
-        CheckConstraint("freeze_count >= 0", name="ck_memberships_freeze_count_non_negative"),
+        CheckConstraint(
+            "ends_on IS NULL OR ends_on >= starts_on", name="ck_memberships_date_order"
+        ),
+        CheckConstraint(
+            "freeze_count >= 0", name="ck_memberships_freeze_count_non_negative"
+        ),
         Index("organization_id", "member_id"),
         Index("organization_id", "status"),
         Index(
@@ -617,7 +638,9 @@ class MembershipTransfer(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("from_member_id != to_member_id", name="ck_transfer_different_members"),
+        CheckConstraint(
+            "from_member_id != to_member_id", name="ck_transfer_different_members"
+        ),
         Index("membership_id"),
         Index("organization_id", "to_member_id"),
         {"extend_existing": True},

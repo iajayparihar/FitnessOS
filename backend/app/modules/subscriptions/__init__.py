@@ -1,3 +1,1 @@
-''
-Subscriptions module package
-''
+"""Subscriptions module package."""

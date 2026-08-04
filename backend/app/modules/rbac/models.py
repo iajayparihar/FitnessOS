@@ -25,7 +25,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 
 # RLS POLICY — roles: organization_id = current OR is_system = true
 # RLS POLICY — user_roles, api_keys: organization_id = current
@@ -93,9 +98,7 @@ class Permission(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<Permission(id={self.id}, code={self.code!r}, category={self.category!r})>"
-        )
+        return f"<Permission(id={self.id}, code={self.code!r}, category={self.category!r})>"
 
 
 class RolePermission(Base):
@@ -219,8 +222,12 @@ class ApiKey(Base, AuditMixin):
         ForeignKey("roles.id", ondelete="SET NULL"),
         default=None,
     )
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (
@@ -234,7 +241,9 @@ class ApiKey(Base, AuditMixin):
         return cls.deleted_at.is_(None)
 
     def is_expired(self) -> bool:
-        return bool(self.expires_at and self.expires_at < datetime.now(self.expires_at.tzinfo))
+        return bool(
+            self.expires_at and self.expires_at < datetime.now(self.expires_at.tzinfo)
+        )
 
     def __repr__(self) -> str:
         return (

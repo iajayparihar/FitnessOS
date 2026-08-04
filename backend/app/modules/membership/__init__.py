@@ -1,3 +1,1 @@
-''
-Membership module package
-''
+"""Membership module package."""

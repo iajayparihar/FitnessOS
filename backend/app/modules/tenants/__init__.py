@@ -1,3 +1,1 @@
-''
-Tenants module package
-''
+"""Tenants module package."""

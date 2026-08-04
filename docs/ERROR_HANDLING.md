@@ -64,6 +64,7 @@ New module-specific codes should extend this list (e.g., `PAYMENT_GATEWAY_ERROR`
 class MembershipError(AppError):
     """Base exception for the membership module."""
 
+
 class MembershipAlreadyFrozenError(MembershipError):
     code = "MEMBERSHIP_ALREADY_FROZEN"
     status_code = 409

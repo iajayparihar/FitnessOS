@@ -1,3 +1,1 @@
-''
-Inventory module package
-''
+"""Inventory module package."""

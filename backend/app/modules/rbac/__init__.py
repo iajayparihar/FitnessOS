@@ -1,3 +1,1 @@
-''
-RBAC module package
-''
+"""RBAC module package."""

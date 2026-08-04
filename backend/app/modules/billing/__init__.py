@@ -1,3 +1,1 @@
-''
-Billing module package
-''
+"""Billing module package."""

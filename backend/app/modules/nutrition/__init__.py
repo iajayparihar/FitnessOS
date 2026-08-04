@@ -1,3 +1,1 @@
-''
-Nutrition module package
-''
+"""Nutrition module package."""

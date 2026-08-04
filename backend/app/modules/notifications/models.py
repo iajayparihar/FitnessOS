@@ -27,7 +27,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 from app.core.enums import NotificationChannel, NotificationStatus
 
 
@@ -117,7 +122,9 @@ class Notification(Base, AuditMixin):
         sa_Enum(RecipientType, name="recipienttype"),
         nullable=False,
     )
-    recipient_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), default=None)
+    recipient_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), default=None
+    )
     recipient_contact: Mapped[Optional[str]] = mapped_column(Text, default=None)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     status: Mapped[NotificationStatus] = mapped_column(
@@ -125,9 +132,15 @@ class Notification(Base, AuditMixin):
         nullable=False,
         default=NotificationStatus.PENDING,
     )
-    scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    scheduled_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     last_error: Mapped[Optional[str]] = mapped_column(Text, default=None)
@@ -150,8 +163,12 @@ class Notification(Base, AuditMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("attempt_count >= 0", name="ck_notifications_attempt_count_non_negative"),
-        CheckConstraint("priority BETWEEN 1 AND 10", name="ck_notifications_priority_range"),
+        CheckConstraint(
+            "attempt_count >= 0", name="ck_notifications_attempt_count_non_negative"
+        ),
+        CheckConstraint(
+            "priority BETWEEN 1 AND 10", name="ck_notifications_priority_range"
+        ),
         CheckConstraint(
             "recipient_id IS NOT NULL OR recipient_contact IS NOT NULL",
             name="ck_notifications_has_recipient",

@@ -1,3 +1,1 @@
-''
-Test factories package
-''
+"""Test factories package."""

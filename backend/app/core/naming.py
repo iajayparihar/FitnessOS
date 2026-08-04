@@ -26,4 +26,3 @@ class Base(DeclarativeBase):
 
 This ensures all auto-generated constraint names follow the convention.
 """
-

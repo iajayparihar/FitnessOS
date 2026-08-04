@@ -27,7 +27,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 
 
 class WebhookDeliveryStatus(str, enum.Enum):
@@ -54,11 +59,17 @@ class Webhook(Base, AuditMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     url: Mapped[str] = mapped_column(Text, nullable=False)
     secret_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    event_filters: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
+    event_filters: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, default=list
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_triggered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    last_success_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    last_triggered_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    last_success_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     deliveries: Mapped[list["WebhookDelivery"]] = relationship(
         "WebhookDelivery",
@@ -67,7 +78,9 @@ class Webhook(Base, AuditMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("failure_count >= 0", name="ck_webhooks_failure_count_non_negative"),
+        CheckConstraint(
+            "failure_count >= 0", name="ck_webhooks_failure_count_non_negative"
+        ),
         Index("organization_id", "is_active"),
         {"extend_existing": True},
     )
@@ -118,7 +131,9 @@ class WebhookDelivery(Base):
         default=func.now(),
     )
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    next_retry_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    next_retry_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     duration_ms: Mapped[Optional[int]] = mapped_column(Integer, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -132,7 +147,9 @@ class WebhookDelivery(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("retry_count >= 0", name="ck_webhook_deliveries_retry_count_non_negative"),
+        CheckConstraint(
+            "retry_count >= 0", name="ck_webhook_deliveries_retry_count_non_negative"
+        ),
         Index("webhook_id", attempted_at.desc()),
         Index(
             "organization_id",

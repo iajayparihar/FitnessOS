@@ -1,3 +1,1 @@
-''
-Core infrastructure package
-''
+"""Core infrastructure package."""

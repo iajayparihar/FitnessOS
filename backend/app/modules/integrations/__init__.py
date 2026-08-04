@@ -1,3 +1,1 @@
-''
-Integrations module package
-''
+"""Integrations module package."""

@@ -1,3 +1,1 @@
-''
-Trainer module package
-''
+"""Trainer module package."""

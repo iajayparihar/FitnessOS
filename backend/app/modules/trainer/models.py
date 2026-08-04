@@ -26,7 +26,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 
 
 class WorkoutDifficulty(str, enum.Enum):
@@ -110,8 +115,12 @@ class ExerciseTemplate(Base, AuditMixin):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    muscle_groups: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), default=None)
-    equipment_needed: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), default=None)
+    muscle_groups: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text), default=None
+    )
+    equipment_needed: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text), default=None
+    )
     instructions: Mapped[Optional[str]] = mapped_column(Text, default=None)
     video_url: Mapped[Optional[str]] = mapped_column(Text, default=None)
     thumbnail_url: Mapped[Optional[str]] = mapped_column(Text, default=None)
@@ -155,7 +164,9 @@ class WorkoutTemplate(Base, AuditMixin):
         sa_Enum(WorkoutDifficulty, name="workoutdifficulty"),
         nullable=False,
     )
-    estimated_duration_minutes: Mapped[Optional[int]] = mapped_column(Integer, default=None)
+    estimated_duration_minutes: Mapped[Optional[int]] = mapped_column(
+        Integer, default=None
+    )
     exercises: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
@@ -298,7 +309,9 @@ class WorkoutLog(Base, TimestampMixin):
     logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     exercises_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
     duration_minutes: Mapped[Optional[int]] = mapped_column(Integer, default=None)
-    perceived_exertion: Mapped[Optional[int]] = mapped_column(SmallInteger, default=None)
+    perceived_exertion: Mapped[Optional[int]] = mapped_column(
+        SmallInteger, default=None
+    )
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
 
     workout_assignment: Mapped[Optional[WorkoutAssignment]] = relationship(

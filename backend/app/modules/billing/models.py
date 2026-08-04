@@ -27,7 +27,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 from app.core.enums import PaymentStatus, PaymentMethod
 
 
@@ -111,7 +116,9 @@ class Coupon(Base, AuditMixin):
     redeemed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     valid_from: Mapped[Optional[Date]] = mapped_column(Date, default=None)
     valid_until: Mapped[Optional[Date]] = mapped_column(Date, default=None)
-    applicable_plans: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text), default=None)
+    applicable_plans: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text), default=None
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (
@@ -126,7 +133,9 @@ class Coupon(Base, AuditMixin):
             "(discount_type != 'percentage') OR (discount_value <= 100)",
             name="ck_coupons_pct_max",
         ),
-        CheckConstraint("redeemed_count >= 0", name="ck_coupons_redeemed_count_non_negative"),
+        CheckConstraint(
+            "redeemed_count >= 0", name="ck_coupons_redeemed_count_non_negative"
+        ),
         CheckConstraint(
             "max_redemptions IS NULL OR redeemed_count <= max_redemptions",
             name="ck_coupons_redemption_limit",
@@ -148,14 +157,15 @@ class Coupon(Base, AuditMixin):
             return False
         if self.valid_until is not None and today > self.valid_until:
             return False
-        if self.max_redemptions is not None and self.redeemed_count >= self.max_redemptions:
+        if (
+            self.max_redemptions is not None
+            and self.redeemed_count >= self.max_redemptions
+        ):
             return False
         return True
 
     def __repr__(self) -> str:
-        return (
-            f"<Coupon(id={self.id}, organization_id={self.organization_id}, code={self.code!r})>"
-        )
+        return f"<Coupon(id={self.id}, organization_id={self.organization_id}, code={self.code!r})>"
 
 
 class Invoice(Base, AuditMixin):
@@ -193,7 +203,9 @@ class Invoice(Base, AuditMixin):
         nullable=False,
         default=InvoiceStatus.DRAFT,
     )
-    issue_date: Mapped[Date] = mapped_column(Date, nullable=False, default=func.current_date())
+    issue_date: Mapped[Date] = mapped_column(
+        Date, nullable=False, default=func.current_date()
+    )
     due_date: Mapped[Optional[Date]] = mapped_column(Date, default=None)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
     subtotal_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
@@ -203,10 +215,18 @@ class Invoice(Base, AuditMixin):
     paid_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
     terms: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
-    issued_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    voided_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
+    issued_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    paid_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    voided_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     items: Mapped[list["InvoiceItem"]] = relationship(
         "InvoiceItem",
@@ -231,8 +251,12 @@ class Invoice(Base, AuditMixin):
             name="uq_invoices_org_number",
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        CheckConstraint("subtotal_cents >= 0", name="ck_invoices_subtotal_non_negative"),
-        CheckConstraint("discount_cents >= 0", name="ck_invoices_discount_non_negative"),
+        CheckConstraint(
+            "subtotal_cents >= 0", name="ck_invoices_subtotal_non_negative"
+        ),
+        CheckConstraint(
+            "discount_cents >= 0", name="ck_invoices_discount_non_negative"
+        ),
         CheckConstraint("tax_cents >= 0", name="ck_invoices_tax_non_negative"),
         CheckConstraint("total_cents >= 0", name="ck_invoices_total_non_negative"),
         CheckConstraint("paid_cents >= 0", name="ck_invoices_paid_non_negative"),
@@ -312,10 +336,18 @@ class InvoiceItem(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_invoice_items_quantity_positive"),
-        CheckConstraint("unit_price_cents >= 0", name="ck_invoice_items_unit_price_non_negative"),
-        CheckConstraint("discount_cents >= 0", name="ck_invoice_items_discount_non_negative"),
-        CheckConstraint("tax_amount_cents >= 0", name="ck_invoice_items_tax_amount_non_negative"),
-        CheckConstraint("amount_cents >= 0", name="ck_invoice_items_amount_non_negative"),
+        CheckConstraint(
+            "unit_price_cents >= 0", name="ck_invoice_items_unit_price_non_negative"
+        ),
+        CheckConstraint(
+            "discount_cents >= 0", name="ck_invoice_items_discount_non_negative"
+        ),
+        CheckConstraint(
+            "tax_amount_cents >= 0", name="ck_invoice_items_tax_amount_non_negative"
+        ),
+        CheckConstraint(
+            "amount_cents >= 0", name="ck_invoice_items_amount_non_negative"
+        ),
         Index("invoice_id"),
         {"extend_existing": True},
     )
@@ -422,9 +454,13 @@ class Payment(Base, AuditMixin):
     gateway_payment_id: Mapped[Optional[str]] = mapped_column(Text, default=None)
     gateway_order_id: Mapped[Optional[str]] = mapped_column(Text, default=None)
     gateway_signature: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    captured_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    captured_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     failure_reason: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
     collected_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -446,10 +482,12 @@ class Payment(Base, AuditMixin):
         ),
         Index("organization_id", "status"),
         Index("organization_id", "member_id"),
-        Index("organization_id", captured_at.desc(), name="ix_payments_org_captured_at"),
+        Index(
+            "organization_id", captured_at.desc(), name="ix_payments_org_captured_at"
+        ),
         Index(
             "gateway_payment_id",
-            postgresql_where=func.coalesce(gateway_payment_id, '') != '',
+            postgresql_where=func.coalesce(gateway_payment_id, "") != "",
             name="ix_payments_gateway_payment_id_not_null",
         ),
         {"extend_existing": True},
@@ -498,7 +536,9 @@ class Refund(Base, AuditMixin):
         default=RefundStatus.PENDING,
     )
     gateway_refund_id: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     processed_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),

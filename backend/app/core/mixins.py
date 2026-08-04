@@ -83,4 +83,3 @@ class TenantScopedMixin(AuditMixin):
         index=True,
         nullable=False,
     )
-

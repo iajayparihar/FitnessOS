@@ -26,7 +26,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 
 
 class DeviceType(str, enum.Enum):
@@ -77,8 +82,12 @@ class AttendanceDevice(Base, AuditMixin):
     )
     identifier: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -207,8 +216,12 @@ class AttendanceQRToken(Base, TimestampMixin):
         nullable=False,
     )
     token: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    used_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     is_single_use: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (

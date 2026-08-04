@@ -51,7 +51,12 @@ app/modules/<module_name>/
 - Custom exceptions per module (e.g., `MemberNotFoundError`), caught centrally and translated to the standard error response shape (see `ERROR_HANDLING.md`).
 - Docstrings required on all public service methods and route handlers — explain *why*, not just *what*, when the code isn't self-evident.
 - Avoid deep nesting — prefer early returns / guard clauses.
-
+Docstring Rules:
+- Use Google-style docstrings.
+- Wrap every docstring line to a maximum of 88 characters.
+- Keep the summary on one short line.
+- Wrap descriptions, Args, Returns, Raises, and Examples to 88 characters.
+- Never produce docstrings with lines longer than 88 characters.
 ---
 
 ## 3. Frontend (React / TypeScript)

@@ -45,19 +45,25 @@ class AuditLog(Base):
         ForeignKey("organizations.id", ondelete="SET NULL"),
         default=None,
     )
-    actor_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), default=None)
+    actor_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), default=None
+    )
     actor_type: Mapped[ActorType] = mapped_column(
         sa_Enum(ActorType, name="actortype"),
         nullable=False,
     )
     action: Mapped[str] = mapped_column(Text, nullable=False)
     target_type: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    target_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), default=None)
+    target_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), default=None
+    )
     before_state: Mapped[Optional[dict]] = mapped_column(JSONB, default=None)
     after_state: Mapped[Optional[dict]] = mapped_column(JSONB, default=None)
     ip_address: Mapped[Optional[str]] = mapped_column(Text, default=None)
     user_agent: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

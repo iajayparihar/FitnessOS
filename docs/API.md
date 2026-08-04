@@ -146,8 +146,7 @@ Every endpoint declares its required permission(s) explicitly via a FastAPI depe
 async def delete_payment(
     payment_id: UUID,
     _: User = Depends(require_permission("payments:delete")),
-):
-    ...
+): ...
 ```
 
 No endpoint is permission-less by default except explicitly public ones (auth, health check). See `SECURITY.md` for the full permission matrix.

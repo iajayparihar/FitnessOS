@@ -1,3 +1,1 @@
-''
-Auth module package
-''
+"""Authentication module package."""

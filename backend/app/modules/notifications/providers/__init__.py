@@ -1,3 +1,1 @@
-''
-Notification providers package
-''
+"""Notification providers package."""

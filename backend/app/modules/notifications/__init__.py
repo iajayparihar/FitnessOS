@@ -1,3 +1,1 @@
-''
-Notifications module package
-''
+"""Notifications module package."""

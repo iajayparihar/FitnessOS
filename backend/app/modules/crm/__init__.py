@@ -1,3 +1,1 @@
-''
-CRM module package
-''
+"""CRM module package."""

@@ -27,7 +27,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 
 
 class ProductCategory(str, enum.Enum):
@@ -131,7 +136,9 @@ class Product(Base, AuditMixin):
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
     is_service: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
 
     inventories: Mapped[list["Inventory"]] = relationship(
         "Inventory",
@@ -146,7 +153,9 @@ class Product(Base, AuditMixin):
             name="uq_products_org_sku",
             postgresql_where=sku.isnot(None) & deleted_at.is_(None),
         ),
-        CheckConstraint("unit_price_cents >= 0", name="ck_products_unit_price_non_negative"),
+        CheckConstraint(
+            "unit_price_cents >= 0", name="ck_products_unit_price_non_negative"
+        ),
         Index("organization_id", "is_active", "category"),
         {"extend_existing": True},
     )
@@ -258,8 +267,13 @@ class Inventory(Base, TimestampMixin):
             "location_id",
             name="uq_inventories_product_location",
         ),
-        CheckConstraint("quantity_on_hand >= 0", name="ck_inventories_quantity_on_hand_non_negative"),
-        CheckConstraint("reserved_quantity >= 0", name="ck_inventories_reserved_quantity_non_negative"),
+        CheckConstraint(
+            "quantity_on_hand >= 0", name="ck_inventories_quantity_on_hand_non_negative"
+        ),
+        CheckConstraint(
+            "reserved_quantity >= 0",
+            name="ck_inventories_reserved_quantity_non_negative",
+        ),
         Index("organization_id"),
         {"extend_existing": True},
     )
@@ -302,9 +316,13 @@ class PurchaseOrder(Base, AuditMixin):
     )
     total_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
-    ordered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    ordered_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     expected_at: Mapped[Optional[Date]] = mapped_column(Date, default=None)
-    received_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    received_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
 
     supplier: Mapped[Supplier] = relationship(
@@ -324,7 +342,9 @@ class PurchaseOrder(Base, AuditMixin):
             name="uq_purchase_orders_org_number",
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        CheckConstraint("total_cents >= 0", name="ck_purchase_orders_total_non_negative"),
+        CheckConstraint(
+            "total_cents >= 0", name="ck_purchase_orders_total_non_negative"
+        ),
         Index("organization_id"),
         {"extend_existing": True},
     )
@@ -377,10 +397,21 @@ class PurchaseOrderItem(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("quantity > 0", name="ck_purchase_order_items_quantity_positive"),
-        CheckConstraint("unit_cost_cents >= 0", name="ck_purchase_order_items_unit_cost_non_negative"),
-        CheckConstraint("received_quantity >= 0", name="ck_purchase_order_items_received_quantity_non_negative"),
-        CheckConstraint("received_quantity <= quantity", name="ck_purchase_order_items_received_quantity_lte_quantity"),
+        CheckConstraint(
+            "quantity > 0", name="ck_purchase_order_items_quantity_positive"
+        ),
+        CheckConstraint(
+            "unit_cost_cents >= 0",
+            name="ck_purchase_order_items_unit_cost_non_negative",
+        ),
+        CheckConstraint(
+            "received_quantity >= 0",
+            name="ck_purchase_order_items_received_quantity_non_negative",
+        ),
+        CheckConstraint(
+            "received_quantity <= quantity",
+            name="ck_purchase_order_items_received_quantity_lte_quantity",
+        ),
         Index("purchase_order_id"),
         {"extend_existing": True},
     )
@@ -422,7 +453,9 @@ class InventoryTransaction(Base):
     )
     quantity_change: Mapped[int] = mapped_column(Integer, nullable=False)
     reference_type: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    reference_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), default=None)
+    reference_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), default=None
+    )
     balance_after: Mapped[Optional[int]] = mapped_column(Integer, default=None)
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(

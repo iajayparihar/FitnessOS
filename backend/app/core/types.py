@@ -60,4 +60,3 @@ class CurrencyCode(String):
 
     def __init__(self):
         super().__init__(3)
-

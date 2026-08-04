@@ -6,14 +6,31 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import (
-    String, Boolean, Integer, BigInteger, Text, Date,
-    DateTime, Numeric, SmallInteger, ForeignKey, UniqueConstraint,
-    CheckConstraint, Index, func, Enum as sa_Enum
+    String,
+    Boolean,
+    Integer,
+    BigInteger,
+    Text,
+    Date,
+    DateTime,
+    Numeric,
+    SmallInteger,
+    ForeignKey,
+    UniqueConstraint,
+    CheckConstraint,
+    Index,
+    func,
+    Enum as sa_Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 
 
 class AIFeatureType(str, enum.Enum):
@@ -69,10 +86,19 @@ class AIFeatureUsage(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("tokens_used >= 0", name="ck_ai_feature_usage_tokens_non_negative"),
-        CheckConstraint("cost_paise >= 0", name="ck_ai_feature_usage_cost_non_negative"),
+        CheckConstraint(
+            "tokens_used >= 0", name="ck_ai_feature_usage_tokens_non_negative"
+        ),
+        CheckConstraint(
+            "cost_paise >= 0", name="ck_ai_feature_usage_cost_non_negative"
+        ),
         Index("organization_id", recorded_at.desc()),
-        Index("organization_id", "feature_type", recorded_at, name="ix_ai_usage_org_feature_time"),
+        Index(
+            "organization_id",
+            "feature_type",
+            recorded_at,
+            name="ix_ai_usage_org_feature_time",
+        ),
         Index(
             "organization_id",
             "member_id",

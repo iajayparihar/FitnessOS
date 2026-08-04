@@ -1,3 +1,1 @@
-''
-Attendance module package
-''
+"""Attendance module package."""

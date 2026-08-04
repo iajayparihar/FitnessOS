@@ -1,3 +1,1 @@
-''
-Analytics module package
-''
+"""Analytics module package."""

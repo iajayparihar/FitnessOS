@@ -26,7 +26,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 from app.core.enums import PaymentMethod
 
 
@@ -125,7 +130,9 @@ class Expense(Base, AuditMixin):
         ForeignKey("users.id", ondelete="SET NULL"),
         default=None,
     )
-    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     is_recurring: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     recurrence_interval: Mapped[Optional[str]] = mapped_column(Text, default=None)
 
@@ -190,7 +197,10 @@ class PayrollEmployee(Base, AuditMixin):
             name="uq_payroll_employees_org_user",
             postgresql_where=deleted_at.is_(None),
         ),
-        CheckConstraint("salary_cents IS NULL OR salary_cents >= 0", name="ck_payroll_employees_salary_non_negative"),
+        CheckConstraint(
+            "salary_cents IS NULL OR salary_cents >= 0",
+            name="ck_payroll_employees_salary_non_negative",
+        ),
         CheckConstraint(
             "leaving_date IS NULL OR leaving_date >= joining_date",
             name="ck_payroll_employees_leaving_after_joining",
@@ -226,11 +236,17 @@ class PayrollRun(Base, AuditMixin):
         nullable=False,
         default=PayrollRunStatus.DRAFT,
     )
-    total_gross_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    total_deductions_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    total_gross_cents: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0
+    )
+    total_deductions_cents: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0
+    )
     total_net_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     processed_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -244,9 +260,15 @@ class PayrollRun(Base, AuditMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("period_end >= period_start", name="ck_payroll_runs_period_order"),
-        CheckConstraint("total_gross_cents >= 0", name="ck_payroll_runs_gross_non_negative"),
-        CheckConstraint("total_net_cents >= 0", name="ck_payroll_runs_net_non_negative"),
+        CheckConstraint(
+            "period_end >= period_start", name="ck_payroll_runs_period_order"
+        ),
+        CheckConstraint(
+            "total_gross_cents >= 0", name="ck_payroll_runs_gross_non_negative"
+        ),
+        CheckConstraint(
+            "total_net_cents >= 0", name="ck_payroll_runs_net_non_negative"
+        ),
         Index("organization_id", period_start.desc()),
         {"extend_existing": True},
     )
@@ -287,7 +309,9 @@ class PayrollItem(Base, TimestampMixin):
     deductions: Mapped[Optional[dict]] = mapped_column(JSONB, default=None)
     net_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     payment_ref: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     payroll_run: Mapped[PayrollRun] = relationship(
         "PayrollRun",
@@ -297,8 +321,12 @@ class PayrollItem(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("gross_cents >= 0", name="ck_payroll_items_gross_non_negative"),
         CheckConstraint("net_cents >= 0", name="ck_payroll_items_net_non_negative"),
-        CheckConstraint("net_cents <= gross_cents", name="ck_payroll_items_net_lte_gross"),
-        UniqueConstraint("payroll_run_id", "employee_id", name="uq_payroll_items_run_employee"),
+        CheckConstraint(
+            "net_cents <= gross_cents", name="ck_payroll_items_net_lte_gross"
+        ),
+        UniqueConstraint(
+            "payroll_run_id", "employee_id", name="uq_payroll_items_run_employee"
+        ),
         Index("payroll_run_id"),
         {"extend_existing": True},
     )

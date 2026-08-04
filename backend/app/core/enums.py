@@ -85,4 +85,3 @@ class ActorType(str, enum.Enum):
     USER = "user"
     SYSTEM = "system"
     API_KEY = "api_key"
-

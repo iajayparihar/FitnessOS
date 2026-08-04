@@ -1,3 +1,1 @@
-''
-Expenses module package
-''
+"""Expenses module package."""

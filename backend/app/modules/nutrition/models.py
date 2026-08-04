@@ -27,7 +27,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 
 
 class MealType(str, enum.Enum):
@@ -58,9 +63,13 @@ class FoodItem(Base, AuditMixin):
     carbs_g: Mapped[Numeric] = mapped_column(Numeric(6, 2), nullable=False)
     fat_g: Mapped[Numeric] = mapped_column(Numeric(6, 2), nullable=False)
     fiber_g: Mapped[Optional[Numeric]] = mapped_column(Numeric(6, 2), default=None)
-    serving_size_g: Mapped[Numeric] = mapped_column(Numeric(6, 2), nullable=False, default=100)
+    serving_size_g: Mapped[Numeric] = mapped_column(
+        Numeric(6, 2), nullable=False, default=100
+    )
     barcode: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -239,10 +248,14 @@ class BodyMetrics(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     weight_kg: Mapped[Optional[Numeric]] = mapped_column(Numeric(5, 2), default=None)
     body_fat_pct: Mapped[Optional[Numeric]] = mapped_column(Numeric(4, 2), default=None)
-    muscle_mass_kg: Mapped[Optional[Numeric]] = mapped_column(Numeric(5, 2), default=None)
+    muscle_mass_kg: Mapped[Optional[Numeric]] = mapped_column(
+        Numeric(5, 2), default=None
+    )
     bmi: Mapped[Optional[Numeric]] = mapped_column(Numeric(4, 2), default=None)
     waist_cm: Mapped[Optional[Numeric]] = mapped_column(Numeric(5, 2), default=None)
     chest_cm: Mapped[Optional[Numeric]] = mapped_column(Numeric(5, 2), default=None)

@@ -26,7 +26,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 from app.core.enums import OrganizationStatus
 
 
@@ -139,8 +144,12 @@ class Lead(Base, AuditMixin):
     interested_plan: Mapped[Optional[str]] = mapped_column(Text, default=None)
     rating: Mapped[Optional[int]] = mapped_column(SmallInteger, default=None)
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
-    converted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
+    converted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     converted_member_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("members.id", ondelete="SET NULL"),
@@ -237,8 +246,12 @@ class LeadFollowUp(Base, AuditMixin):
         sa_Enum(LeadFollowUpType, name="leadfollowuptype"),
         nullable=False,
     )
-    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    scheduled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     outcome: Mapped[Optional[str]] = mapped_column(Text, default=None)
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
     is_overdue: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -318,7 +331,9 @@ class LeadActivity(Base, TimestampMixin):
         default=func.now(),
     )
     summary: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
 
     lead: Mapped[Lead] = relationship(
         "Lead",
@@ -332,9 +347,7 @@ class LeadActivity(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<LeadActivity(id={self.id}, lead_id={self.lead_id}, kind={self.kind})>"
-        )
+        return f"<LeadActivity(id={self.id}, lead_id={self.lead_id}, kind={self.kind})>"
 
 
 class Note(Base, AuditMixin):
@@ -359,7 +372,9 @@ class Note(Base, AuditMixin):
     )
     body: Mapped[str] = mapped_column(Text, nullable=False)
     is_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
 
     __table_args__ = (
         Index("ix_notes_org_parent", "organization_id", "parent_type", "parent_id"),

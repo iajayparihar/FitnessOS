@@ -26,7 +26,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 from app.core.enums import BillingCycle, SubscriptionStatus
 
 
@@ -140,13 +145,25 @@ class TenantSubscription(Base, AuditMixin):
     price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    ends_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    trial_ends_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    next_billing_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
-    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    ends_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    trial_ends_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    next_billing_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+    cancel_at_period_end: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     external_subscription_id: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    metadata_: Mapped[Optional[dict]] = mapped_column(JSONB, name="metadata", default=None)
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        JSONB, name="metadata", default=None
+    )
 
     organization: Mapped["Organization"] = relationship(
         "Organization",
@@ -158,7 +175,9 @@ class TenantSubscription(Base, AuditMixin):
     )
 
     __table_args__ = (
-        CheckConstraint("price_cents >= 0", name="ck_tenant_subscriptions_price_positive"),
+        CheckConstraint(
+            "price_cents >= 0", name="ck_tenant_subscriptions_price_positive"
+        ),
         CheckConstraint("seats >= 1", name="ck_tenant_subscriptions_seats_positive"),
         Index("organization_id", "status"),
         Index(
@@ -204,10 +223,14 @@ class TenantFeatureFlag(Base, TimestampMixin):
     feature_key: Mapped[str] = mapped_column(Text, nullable=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     config: Mapped[Optional[dict]] = mapped_column(JSONB, default=None)
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     __table_args__ = (
-        UniqueConstraint("organization_id", "feature_key", name="uq_tenant_feature_flags_org_key"),
+        UniqueConstraint(
+            "organization_id", "feature_key", name="uq_tenant_feature_flags_org_key"
+        ),
         Index("organization_id"),
         {"extend_existing": True},
     )

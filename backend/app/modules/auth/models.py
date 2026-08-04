@@ -27,7 +27,12 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base import Base
-from app.core.mixins import TimestampMixin, AuditMixin, TenantScopedMixin, SoftDeleteMixin
+from app.core.mixins import (
+    TimestampMixin,
+    AuditMixin,
+    TenantScopedMixin,
+    SoftDeleteMixin,
+)
 
 
 class AuthProvider(str, enum.Enum):
@@ -56,7 +61,9 @@ class User(Base, AuditMixin):
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     metadata_: Mapped[Optional[dict]] = mapped_column(
         JSONB,
         name="metadata",
@@ -186,7 +193,9 @@ class UserAuthMethod(Base, TimestampMixin):
     provider_uid: Mapped[Optional[str]] = mapped_column(Text, default=None)
     password_hash: Mapped[Optional[str]] = mapped_column(Text, default=None)
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     user: Mapped[User] = relationship(
         "User",
@@ -236,8 +245,12 @@ class Session(Base, TimestampMixin):
         default=None,
     )
     refresh_token_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
     ip_address: Mapped[Optional[str]] = mapped_column(Text, default=None)
     user_agent: Mapped[Optional[str]] = mapped_column(Text, default=None)
     device_info: Mapped[Optional[dict]] = mapped_column(JSONB, default=None)
@@ -286,10 +299,16 @@ class Invite(Base, TimestampMixin):
         ForeignKey("users.id", ondelete="SET NULL"),
         default=None,
     )
-    role_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), default=None)
+    role_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), default=None
+    )
     token: Mapped[str] = mapped_column(Text, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), default=None)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
 
     __table_args__ = (
         UniqueConstraint(

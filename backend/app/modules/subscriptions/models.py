@@ -32,7 +32,15 @@ from app.core.mixins import (
     TenantScopedMixin,
     SoftDeleteMixin,
 )
-from app.core.enums import BillingCycle, SubscriptionStatus
+from app.core.enums import BillingCycle
+
+
+class SubscriptionStatus(str, enum.Enum):
+    TRIALING = "trialing"
+    ACTIVE = "active"
+    PAST_DUE = "past_due"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"
 
 
 class SubscriptionPlan(Base, TimestampMixin):
@@ -64,7 +72,6 @@ class SubscriptionPlan(Base, TimestampMixin):
         CheckConstraint("price_cents >= 0", name="ck_sub_plans_price_positive"),
         CheckConstraint("trial_days >= 0", name="ck_sub_plans_trial_positive"),
         Index("ix_subscription_plans_active_public", "is_active", "is_public"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -99,8 +106,6 @@ class PlanFeature(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("plan_id", "feature_key", name="uq_plan_features_plan_key"),
-        Index("plan_id"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -179,13 +184,16 @@ class TenantSubscription(Base, AuditMixin):
             "price_cents >= 0", name="ck_tenant_subscriptions_price_positive"
         ),
         CheckConstraint("seats >= 1", name="ck_tenant_subscriptions_seats_positive"),
-        Index("organization_id", "status"),
         Index(
+            "ix_tenant_subscriptions_organization_id_status",
+            "organization_id",
+            "status",
+        ),
+        Index(
+            "ix_tenant_subscriptions_next_billing_active",
             "next_billing_at",
             postgresql_where=(status == SubscriptionStatus.ACTIVE),
-            name="ix_tenant_subscriptions_next_billing_active",
         ),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -231,8 +239,6 @@ class TenantFeatureFlag(Base, TimestampMixin):
         UniqueConstraint(
             "organization_id", "feature_key", name="uq_tenant_feature_flags_org_key"
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:

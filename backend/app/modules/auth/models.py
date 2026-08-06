@@ -111,21 +111,20 @@ class User(Base, AuditMixin):
     )
 
     __table_args__ = (
-        Index("organization_id"),
-        Index(func.lower(email), name="ix_users_email_lower"),
+        Index("ix_users_organization_id", "organization_id"),
+        Index("ix_users_email_lower", func.lower(email)),
         Index(
+            "uq_users_org_email",
             func.lower(email),
             unique=True,
-            name="uq_users_org_email",
             postgresql_where=text("organization_id IS NOT NULL AND deleted_at IS NULL"),
         ),
         Index(
+            "uq_users_platform_email",
             func.lower(email),
             unique=True,
-            name="uq_users_platform_email",
             postgresql_where=text("organization_id IS NULL AND deleted_at IS NULL"),
         ),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -208,15 +207,15 @@ class UserAuthMethod(Base, TimestampMixin):
             name="ck_auth_method_password_hash",
         ),
         Index(
+            "ix_user_auth_methods_user_id",
             "user_id",
         ),
         Index(
+            "ix_user_auth_methods_provider_uid",
             "provider",
             "provider_uid",
             postgresql_where=text("provider_uid IS NOT NULL"),
-            name="ix_user_auth_methods_provider_uid",
         ),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -262,14 +261,13 @@ class Session(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("refresh_token_hash", name="uq_sessions_refresh_token_hash"),
-        Index("user_id"),
-        Index("expires_at"),
+        Index("ix_sessions_user_id", "user_id"),
+        Index("ix_sessions_expires_at", "expires_at"),
         Index(
+            "ix_sessions_organization_id_not_null",
             "organization_id",
             postgresql_where=text("organization_id IS NOT NULL"),
-            name="ix_sessions_organization_id_not_null",
         ),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -311,15 +309,15 @@ class Invite(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_invites_pending_email",
             "organization_id",
             func.lower(email),
-            name="uq_invites_pending_email",
+            unique=True,
             postgresql_where=text("accepted_at IS NULL"),
         ),
-        Index("organization_id"),
-        Index("token"),
-        {"extend_existing": True},
+        Index("ix_invites_organization_id", "organization_id"),
+        Index("ix_invites_token", "token"),
     )
 
     def __repr__(self) -> str:

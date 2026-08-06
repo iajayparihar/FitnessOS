@@ -20,6 +20,7 @@ from sqlalchemy import (
     CheckConstraint,
     Index,
     func,
+    text,
     Enum as sa_Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
@@ -104,15 +105,15 @@ class MembershipPlan(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_membership_plans_org_slug",
             "organization_id",
             func.lower(slug),
-            name="uq_membership_plans_org_slug",
-            postgresql_where=deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         CheckConstraint("price_cents >= 0", name="ck_membership_plans_price_positive"),
-        Index("organization_id", "is_active"),
-        {"extend_existing": True},
+        Index("ix_membership_plans_organization_id_is_active", "organization_id", "is_active"),
     )
 
     def __repr__(self) -> str:
@@ -252,21 +253,19 @@ class Member(Base, AuditMixin):
         UniqueConstraint(
             "organization_id", "member_code", name="uq_members_org_member_code"
         ),
-        Index("organization_id"),
         Index(
+            "ix_members_org_email",
             "organization_id",
             func.lower(email),
-            name="ix_members_org_email",
-            postgresql_where=(email.isnot(None) & deleted_at.is_(None)),
+            postgresql_where=text("email IS NOT NULL AND deleted_at IS NULL"),
         ),
-        Index("organization_id", "status"),
+        Index("ix_members_organization_id_status", "organization_id", "status"),
         Index(
+            "ix_members_org_phone",
             "organization_id",
             func.lower(phone),
             postgresql_where=phone.isnot(None),
-            name="ix_members_org_phone",
         ),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -414,8 +413,7 @@ class MemberDocument(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        Index("organization_id", "member_id"),
-        {"extend_existing": True},
+        Index("ix_member_documents_organization_id_member_id", "organization_id", "member_id"),
     )
 
     def __repr__(self) -> str:
@@ -507,15 +505,14 @@ class Membership(Base, AuditMixin):
         CheckConstraint(
             "freeze_count >= 0", name="ck_memberships_freeze_count_non_negative"
         ),
-        Index("organization_id", "member_id"),
-        Index("organization_id", "status"),
+        Index("ix_memberships_organization_id_member_id", "organization_id", "member_id"),
+        Index("ix_memberships_organization_id_status", "organization_id", "status"),
         Index(
+            "ix_memberships_active_expiry",
             "organization_id",
             "ends_on",
             postgresql_where=(status == MembershipStatus.ACTIVE),
-            name="ix_memberships_active_expiry",
         ),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -579,8 +576,6 @@ class MembershipFreeze(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("resumes_at > frozen_at", name="ck_freeze_dates"),
         CheckConstraint("days_frozen > 0", name="ck_freeze_days_positive"),
-        Index("membership_id"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -641,9 +636,7 @@ class MembershipTransfer(Base, TimestampMixin):
         CheckConstraint(
             "from_member_id != to_member_id", name="ck_transfer_different_members"
         ),
-        Index("membership_id"),
-        Index("organization_id", "to_member_id"),
-        {"extend_existing": True},
+        Index("ix_membership_transfers_organization_id_to_member_id", "organization_id", "to_member_id"),
     )
 
     def __repr__(self) -> str:

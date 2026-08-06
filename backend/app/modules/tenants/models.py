@@ -53,33 +53,37 @@ class Organization(Base, AuditMixin):
     billing_contact: Mapped[Optional[dict]] = mapped_column(JSONB, default=None)
     data_region: Mapped[Optional[str]] = mapped_column(Text, default=None)
 
-    branches: Mapped[list[OrganizationBranch]] = relationship(
+    branches: Mapped[list["OrganizationBranch"]] = relationship(
         "OrganizationBranch",
         back_populates="organization",
         cascade="all, delete-orphan",
     )
-    settings_list: Mapped[list[OrganizationSetting]] = relationship(
+    settings_list: Mapped[list["OrganizationSetting"]] = relationship(
         "OrganizationSetting",
         back_populates="organization",
         cascade="all, delete-orphan",
         foreign_keys="OrganizationSetting.organization_id",
     )
-    domains: Mapped[list[OrganizationDomain]] = relationship(
+    domains: Mapped[list["OrganizationDomain"]] = relationship(
         "OrganizationDomain",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+    )
+    subscriptions: Mapped[list["TenantSubscription"]] = relationship(
+        "TenantSubscription",
         back_populates="organization",
         cascade="all, delete-orphan",
     )
 
     __table_args__ = (
         Index(
-            func.lower("slug"),
+            "uq_organizations_slug",
+            func.lower(slug),
             unique=True,
-            name="uq_organizations_slug",
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("status"),
-        Index(func.lower("name"), name="ix_organizations_name_lower"),
-        {"extend_existing": True},
+        Index("ix_organizations_status", "status"),
+        Index("ix_organizations_name_lower", func.lower(name)),
     )
 
     @classmethod
@@ -121,11 +125,11 @@ class OrganizationBranch(Base, AuditMixin):
     is_main: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    organization: Mapped[Organization] = relationship(
+    organization: Mapped["Organization"] = relationship(
         "Organization",
         back_populates="branches",
     )
-    settings: Mapped[list[OrganizationSetting]] = relationship(
+    settings: Mapped[list["OrganizationSetting"]] = relationship(
         "OrganizationSetting",
         back_populates="branch",
         cascade="all, delete-orphan",
@@ -133,15 +137,18 @@ class OrganizationBranch(Base, AuditMixin):
 
     __table_args__ = (
         Index(
+            "uq_org_branches_org_name",
             "organization_id",
-            func.lower("name"),
+            func.lower(name),
             unique=True,
-            name="uq_org_branches_org_name",
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("organization_id"),
-        Index("organization_id", "is_active"),
-        {"extend_existing": True},
+        Index("ix_org_branches_organization_id", "organization_id"),
+        Index(
+            "ix_org_branches_organization_id_is_active",
+            "organization_id",
+            "is_active",
+        ),
     )
 
     @classmethod
@@ -187,11 +194,11 @@ class OrganizationSetting(Base, TimestampMixin):
         default=None,
     )
 
-    organization: Mapped[Organization] = relationship(
+    organization: Mapped["Organization"] = relationship(
         "Organization",
         back_populates="settings_list",
     )
-    branch: Mapped[Optional[OrganizationBranch]] = relationship(
+    branch: Mapped[Optional["OrganizationBranch"]] = relationship(
         "OrganizationBranch",
         back_populates="settings",
     )
@@ -203,8 +210,7 @@ class OrganizationSetting(Base, TimestampMixin):
             "key",
             name="uq_org_settings_org_branch_key",
         ),
-        Index("organization_id", "key"),
-        {"extend_existing": True},
+        Index("ix_org_settings_organization_id_key", "organization_id", "key"),
     )
 
     def __repr__(self) -> str:
@@ -250,19 +256,18 @@ class OrganizationDomain(Base, TimestampMixin):
         default=False,
     )
 
-    organization: Mapped[Organization] = relationship(
+    organization: Mapped["Organization"] = relationship(
         "Organization",
         back_populates="domains",
     )
 
     __table_args__ = (
         Index(
-            func.lower("domain"),
+            "uq_org_domains_domain",
+            func.lower(domain),
             unique=True,
-            name="uq_org_domains_domain",
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
+        Index("ix_org_domains_organization_id", "organization_id"),
     )
 
     def __repr__(self) -> str:

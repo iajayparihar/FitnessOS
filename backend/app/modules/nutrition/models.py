@@ -72,19 +72,19 @@ class FoodItem(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_food_items_org_name",
             "organization_id",
             func.lower(name),
-            name="uq_food_items_org_name",
+            unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("organization_id"),
+        Index("ix_food_items_organization_id", "organization_id"),
         Index(
+            "ix_food_items_barcode",
             "barcode",
             postgresql_where=barcode.isnot(None),
-            name="ix_food_items_barcode",
         ),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -167,13 +167,22 @@ class NutritionPlan(Base, AuditMixin):
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    member: Mapped["Member"] = relationship(
+        "Member",
+        back_populates="nutrition_plans",
+    )
+
     __table_args__ = (
         CheckConstraint(
             "ends_on IS NULL OR ends_on >= starts_on",
             name="ck_nutrition_plans_date_order",
         ),
-        Index("organization_id", "member_id", "is_active"),
-        {"extend_existing": True},
+        Index(
+            "ix_nutrition_plans_organization_id_member_id_is_active",
+            "organization_id",
+            "member_id",
+            "is_active",
+        ),
     )
 
     def __repr__(self) -> str:
@@ -217,8 +226,12 @@ class NutritionLog(Base, TimestampMixin):
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
 
     __table_args__ = (
-        Index("organization_id", "member_id", logged_at.desc()),
-        {"extend_existing": True},
+        Index(
+            "ix_nutrition_logs_organization_id_member_id_logged_at",
+            "organization_id",
+            "member_id",
+            logged_at.desc(),
+        ),
     )
 
     def __repr__(self) -> str:
@@ -270,13 +283,22 @@ class BodyMetrics(Base, TimestampMixin):
     )
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
 
+    member: Mapped["Member"] = relationship(
+        "Member",
+        back_populates="body_metrics",
+    )
+
     __table_args__ = (
         CheckConstraint(
             "weight_kg IS NOT NULL OR body_fat_pct IS NOT NULL OR muscle_mass_kg IS NOT NULL OR bmi IS NOT NULL OR waist_cm IS NOT NULL OR chest_cm IS NOT NULL OR arms_cm IS NOT NULL OR hips_cm IS NOT NULL OR thighs_cm IS NOT NULL",
             name="ck_body_metrics_has_value",
         ),
-        Index("organization_id", "member_id", recorded_at.desc()),
-        {"extend_existing": True},
+        Index(
+            "ix_body_metrics_organization_id_member_id_recorded_at",
+            "organization_id",
+            "member_id",
+            recorded_at.desc(),
+        ),
     )
 
     def __repr__(self) -> str:

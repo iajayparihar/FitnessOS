@@ -20,6 +20,7 @@ from sqlalchemy import (
     CheckConstraint,
     Index,
     func,
+    text,
     Enum as sa_Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
@@ -90,14 +91,18 @@ class AttendanceDevice(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_attendance_devices_org_identifier",
             "organization_id",
             "identifier",
-            name="uq_attendance_devices_org_identifier",
-            postgresql_where=deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("organization_id", "is_active"),
-        {"extend_existing": True},
+        Index(
+            "ix_attendance_devices_organization_id_is_active",
+            "organization_id",
+            "is_active",
+        ),
     )
 
     @classmethod
@@ -166,25 +171,30 @@ class AttendanceRecord(Base):
         default=func.now(),
     )
 
+    member: Mapped[Optional["Member"]] = relationship(
+        "Member",
+        back_populates="attendance_records",
+    )
+
     # PARTITION BY RANGE (recorded_at) — implement in Alembic
     __table_args__ = (
         Index(
+            "ix_attendance_records_org_time",
             "organization_id",
             recorded_at.desc(),
-            name="ix_attendance_records_org_time",
         ),
         Index(
+            "ix_attendance_records_member_time",
             "organization_id",
             "member_id",
             recorded_at.desc(),
-            name="ix_attendance_records_member_time",
         ),
         Index(
+            "ix_attendance_records_org_branch_time",
             "organization_id",
             "branch_id",
             recorded_at.desc(),
             postgresql_where=branch_id.isnot(None),
-            name="ix_attendance_records_org_branch_time",
         ),
         {"postgresql_partition_by": "RANGE (recorded_at)"},
     )
@@ -226,10 +236,13 @@ class AttendanceQRToken(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("token", name="uq_qr_tokens_token"),
-        Index("organization_id", "member_id"),
-        Index("expires_at"),
-        Index("token"),
-        {"extend_existing": True},
+        Index(
+            "ix_attendance_qr_tokens_organization_id_member_id",
+            "organization_id",
+            "member_id",
+        ),
+        Index("ix_attendance_qr_tokens_expires_at", "expires_at"),
+        Index("ix_attendance_qr_tokens_token", "token"),
     )
 
     @property

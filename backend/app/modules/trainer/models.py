@@ -20,6 +20,7 @@ from sqlalchemy import (
     CheckConstraint,
     Index,
     func,
+    text,
     Enum as sa_Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
@@ -90,7 +91,7 @@ class Trainer(Base, AuditMixin):
 
     __table_args__ = (
         UniqueConstraint("organization_id", "user_id", name="uq_trainers_org_user"),
-        {"extend_existing": True},
+         
     )
 
     def __repr__(self) -> str:
@@ -127,14 +128,14 @@ class ExerciseTemplate(Base, AuditMixin):
     is_global: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_exercise_templates_org_name",
             "organization_id",
             func.lower(name),
-            name="uq_exercise_templates_org_name",
-            postgresql_where=deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("organization_id", "is_global"),
-        {"extend_existing": True},
+        Index("ix_exercise_templates_organization_id_is_global", "organization_id", "is_global"),
     )
 
     def __repr__(self) -> str:
@@ -186,8 +187,6 @@ class WorkoutTemplate(Base, AuditMixin):
     )
 
     __table_args__ = (
-        Index("organization_id"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -241,6 +240,10 @@ class WorkoutAssignment(Base, AuditMixin):
         "Trainer",
         back_populates="workout_assignments",
     )
+    member: Mapped["Member"] = relationship(
+        "Member",
+        back_populates="workout_assignments",
+    )
     workout_template: Mapped[WorkoutTemplate] = relationship(
         "WorkoutTemplate",
         back_populates="workout_assignments",
@@ -256,17 +259,17 @@ class WorkoutAssignment(Base, AuditMixin):
             "ends_on IS NULL OR ends_on >= starts_on",
             name="ck_workout_assignments_date_order",
         ),
-        UniqueConstraint(
+        Index(
+            "uq_workout_assignments_active",
             "organization_id",
             "member_id",
             "trainer_id",
             "workout_template_id",
-            name="uq_workout_assignments_active",
-            postgresql_where=(status == AssignmentStatus.ACTIVE) & deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("status = 'active' AND deleted_at IS NULL"),
         ),
-        Index("organization_id", "member_id", "status"),
-        Index("organization_id", "trainer_id", "status"),
-        {"extend_existing": True},
+        Index("ix_workout_assignments_organization_id_member_id_status", "organization_id", "member_id", "status"),
+        Index("ix_workout_assignments_organization_id_trainer_id_status", "organization_id", "trainer_id", "status"),
     )
 
     def __repr__(self) -> str:
@@ -328,8 +331,7 @@ class WorkoutLog(Base, TimestampMixin):
             "perceived_exertion IS NULL OR (perceived_exertion >= 1 AND perceived_exertion <= 10)",
             name="ck_workout_logs_exertion_range",
         ),
-        Index("organization_id", "member_id", logged_at.desc()),
-        {"extend_existing": True},
+        Index("ix_workout_logs_organization_id_member_id_logged_at", "organization_id", "member_id", logged_at.desc()),
     )
 
     def __repr__(self) -> str:
@@ -376,15 +378,20 @@ class TrainerMemberAssignment(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_trainer_member_assignments_primary",
             "organization_id",
             "trainer_id",
             "member_id",
-            name="uq_trainer_member_assignments_primary",
-            postgresql_where=(is_primary.is_(True) & deleted_at.is_(None)),
+            unique=True,
+            postgresql_where=text("is_primary IS TRUE AND deleted_at IS NULL"),
         ),
-        Index("organization_id", "member_id", "is_primary"),
-        {"extend_existing": True},
+        Index(
+            "ix_trainer_member_assignments_org_member_primary",
+            "organization_id",
+            "member_id",
+            "is_primary",
+        ),
     )
 
     def __repr__(self) -> str:

@@ -45,12 +45,15 @@ class InvoiceStatus(str, enum.Enum):
     CANCELLED = "cancelled"
     VOID = "void"
 
-
-class DiscountType(str, enum.Enum):
+class DiscountSource(str, enum.Enum):
     COUPON = "coupon"
     MANUAL = "manual"
     LOYALTY = "loyalty"
     REFERRAL = "referral"
+
+class DiscountValueType(str, enum.Enum):
+    PERCENTAGE = "percentage"
+    FIXED = "fixed"
 
 
 class RefundStatus(str, enum.Enum):
@@ -80,8 +83,7 @@ class TaxRate(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint("rate >= 0 AND rate <= 100", name="ck_tax_rates_rate_range"),
-        Index("organization_id", "is_active"),
-        {"extend_existing": True},
+        Index("ix_tax_rates_organization_id_is_active", "organization_id", "is_active"),
     )
 
     def __repr__(self) -> str:
@@ -107,10 +109,18 @@ class Coupon(Base, AuditMixin):
     )
     code: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    discount_type: Mapped[DiscountType] = mapped_column(
-        sa_Enum(DiscountType, name="discounttype"),
-        nullable=False,
+    discount_source: Mapped[DiscountSource] = mapped_column(
+        sa_Enum(DiscountSource, name="discountsource")
     )
+
+    discount_value_type: Mapped[DiscountValueType] = mapped_column(
+    sa_Enum(
+        DiscountValueType,
+        name="discountvaluetype",
+        values_callable=lambda enum: [e.value for e in enum],
+    ),
+    nullable=False,
+)
     discount_value: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False)
     max_redemptions: Mapped[Optional[int]] = mapped_column(Integer, default=None)
     redeemed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -122,15 +132,15 @@ class Coupon(Base, AuditMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_coupons_org_code",
             "organization_id",
             func.lower(code),
-            name="uq_coupons_org_code",
-            postgresql_where=deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         CheckConstraint("discount_value > 0", name="ck_coupons_value_positive"),
-        CheckConstraint(
-            "(discount_type != 'percentage') OR (discount_value <= 100)",
+        CheckConstraint("discount_value_type != 'percentage' OR discount_value <= 100",
             name="ck_coupons_pct_max",
         ),
         CheckConstraint(
@@ -140,8 +150,7 @@ class Coupon(Base, AuditMixin):
             "max_redemptions IS NULL OR redeemed_count <= max_redemptions",
             name="ck_coupons_redemption_limit",
         ),
-        Index("organization_id", "is_active"),
-        {"extend_existing": True},
+        Index("ix_coupons_organization_id_is_active", "organization_id", "is_active"),
     )
 
     @classmethod
@@ -228,6 +237,10 @@ class Invoice(Base, AuditMixin):
         DateTime(timezone=True), default=None
     )
 
+    member: Mapped[Optional["Member"]] = relationship(
+        "Member",
+        back_populates="invoices",
+    )
     items: Mapped[list["InvoiceItem"]] = relationship(
         "InvoiceItem",
         back_populates="invoice",
@@ -245,10 +258,11 @@ class Invoice(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_invoices_org_number",
             "organization_id",
             "invoice_number",
-            name="uq_invoices_org_number",
+            unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
         CheckConstraint(
@@ -265,16 +279,15 @@ class Invoice(Base, AuditMixin):
             "due_date IS NULL OR due_date >= issue_date",
             name="ck_invoices_due_after_issue",
         ),
-        Index("organization_id", "status"),
-        Index("organization_id", "member_id"),
+        Index("ix_invoices_organization_id_status", "organization_id", "status"),
+        Index("ix_invoices_organization_id_member_id", "organization_id", "member_id"),
         Index(
+            "ix_invoices_outstanding_due",
             "organization_id",
             "due_date",
             postgresql_where=text("status IN ('issued','overdue')"),
-            name="ix_invoices_outstanding_due",
         ),
-        Index("organization_id", issued_at.desc(), name="ix_invoices_org_issued_at"),
-        {"extend_existing": True},
+        Index("ix_invoices_org_issued_at", "organization_id", issued_at.desc()),
     )
 
     @classmethod
@@ -348,8 +361,8 @@ class InvoiceItem(Base, TimestampMixin):
         CheckConstraint(
             "amount_cents >= 0", name="ck_invoice_items_amount_non_negative"
         ),
-        Index("invoice_id"),
-        {"extend_existing": True},
+        Index("ix_invoice_items_invoice_id", "invoice_id"),
+         
     )
 
     def __repr__(self) -> str:
@@ -384,8 +397,8 @@ class Discount(Base, TimestampMixin):
         ForeignKey("coupons.id", ondelete="SET NULL"),
         default=None,
     )
-    type: Mapped[DiscountType] = mapped_column(
-        sa_Enum(DiscountType, name="discounttype"),
+    type: Mapped[DiscountValueType] = mapped_column(
+        sa_Enum(DiscountValueType, name="discountvaluetype"),
         nullable=False,
     )
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -404,8 +417,7 @@ class Discount(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint("amount_cents > 0", name="ck_discounts_amount_positive"),
-        Index("invoice_id"),
-        {"extend_existing": True},
+        Index("ix_discounts_invoice_id", "invoice_id"),
     )
 
     def __repr__(self) -> str:
@@ -471,26 +483,28 @@ class Payment(Base, AuditMixin):
         "Invoice",
         back_populates="payments",
     )
+    member: Mapped[Optional["Member"]] = relationship(
+        "Member",
+        back_populates="payments",
+    )
 
     __table_args__ = (
         CheckConstraint("amount_cents > 0", name="ck_payments_amount_positive"),
-        UniqueConstraint(
+        Index(
+            "uq_payments_gateway_payment_id",
             "gateway",
             "gateway_payment_id",
-            name="uq_payments_gateway_payment_id",
+            unique=True,
             postgresql_where=gateway_payment_id.isnot(None),
         ),
-        Index("organization_id", "status"),
-        Index("organization_id", "member_id"),
+        Index("ix_payments_organization_id_status", "organization_id", "status"),
+        Index("ix_payments_organization_id_member_id", "organization_id", "member_id"),
+        Index("ix_payments_org_captured_at", "organization_id", captured_at.desc()),
         Index(
-            "organization_id", captured_at.desc(), name="ix_payments_org_captured_at"
-        ),
-        Index(
+            "ix_payments_gateway_payment_id_not_null",
             "gateway_payment_id",
             postgresql_where=func.coalesce(gateway_payment_id, "") != "",
-            name="ix_payments_gateway_payment_id_not_null",
         ),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -548,9 +562,8 @@ class Refund(Base, AuditMixin):
 
     __table_args__ = (
         CheckConstraint("amount_cents > 0", name="ck_refunds_amount_positive"),
-        Index("organization_id", "payment_id"),
-        Index("organization_id", "status"),
-        {"extend_existing": True},
+        Index("ix_refunds_organization_id_payment_id", "organization_id", "payment_id"),
+        Index("ix_refunds_organization_id_status", "organization_id", "status"),
     )
 
     @classmethod

@@ -90,14 +90,13 @@ class Supplier(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_suppliers_org_name",
             "organization_id",
             func.lower(name),
-            name="uq_suppliers_org_name",
-            postgresql_where=deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -147,17 +146,17 @@ class Product(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_products_org_sku",
             "organization_id",
             func.lower(sku),
-            name="uq_products_org_sku",
-            postgresql_where=sku.isnot(None) & deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("sku IS NOT NULL AND deleted_at IS NULL"),
         ),
         CheckConstraint(
             "unit_price_cents >= 0", name="ck_products_unit_price_non_negative"
         ),
-        Index("organization_id", "is_active", "category"),
-        {"extend_existing": True},
+        Index("ix_products_organization_id_is_active_category", "organization_id", "is_active", "category"),
     )
 
     @classmethod
@@ -202,14 +201,13 @@ class StockLocation(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_stock_locations_org_code",
             "organization_id",
             "code",
-            name="uq_stock_locations_org_code",
+            unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -274,8 +272,6 @@ class Inventory(Base, TimestampMixin):
             "reserved_quantity >= 0",
             name="ck_inventories_reserved_quantity_non_negative",
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
     )
 
     @property
@@ -336,17 +332,16 @@ class PurchaseOrder(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_purchase_orders_org_number",
             "organization_id",
             "order_number",
-            name="uq_purchase_orders_org_number",
+            unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
         CheckConstraint(
             "total_cents >= 0", name="ck_purchase_orders_total_non_negative"
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -397,23 +392,19 @@ class PurchaseOrderItem(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "quantity > 0", name="ck_purchase_order_items_quantity_positive"
-        ),
+        CheckConstraint("quantity > 0", name="qty_positive"),
         CheckConstraint(
             "unit_cost_cents >= 0",
-            name="ck_purchase_order_items_unit_cost_non_negative",
+            name="unit_cost_non_negative",
         ),
         CheckConstraint(
             "received_quantity >= 0",
-            name="ck_purchase_order_items_received_quantity_non_negative",
+            name="received_qty_non_negative",
         ),
         CheckConstraint(
             "received_quantity <= quantity",
-            name="ck_purchase_order_items_received_quantity_lte_quantity",
+            name="received_qty_lte_qty",
         ),
-        Index("purchase_order_id"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -471,15 +462,19 @@ class InventoryTransaction(Base):
 
     __table_args__ = (
         CheckConstraint("quantity_change != 0", name="ck_inv_tx_nonzero"),
-        Index("organization_id", "product_id", created_at.desc()),
         Index(
+            "ix_inventory_transactions_organization_id_product_id_created_at",
+            "organization_id",
+            "product_id",
+            created_at.desc(),
+        ),
+        Index(
+            "ix_inventory_transactions_org_location_time",
             "organization_id",
             "location_id",
             created_at.desc(),
             postgresql_where=location_id.isnot(None),
-            name="ix_inventory_transactions_org_location_time",
         ),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:

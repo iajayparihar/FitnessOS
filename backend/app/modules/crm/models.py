@@ -87,13 +87,12 @@ class LeadSource(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_lead_sources_org_name",
             "organization_id",
             func.lower(name),
-            name="uq_lead_sources_org_name",
+            unique=True,
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -188,19 +187,19 @@ class Lead(Base, AuditMixin):
     )
 
     __table_args__ = (
-        Index("organization_id", "status"),
-        Index("organization_id", "assigned_to"),
+        Index("ix_leads_organization_id_status", "organization_id", "status"),
+        Index("ix_leads_organization_id_assigned_to", "organization_id", "assigned_to"),
         Index(
+            "ix_leads_org_email_lower",
             "organization_id",
             func.lower(email),
-            name="ix_leads_org_email_lower",
             postgresql_where=(email.isnot(None)),
         ),
         CheckConstraint(
             "rating IS NULL OR (rating >= 1 AND rating <= 5)",
             name="ck_leads_rating_range",
         ),
-        {"extend_existing": True},
+         
     )
 
     @classmethod
@@ -274,12 +273,11 @@ class LeadFollowUp(Base, AuditMixin):
             "scheduled_at",
         ),
         Index(
+            "ix_lead_follow_ups_org_scheduled_pending",
             "organization_id",
             "scheduled_at",
             postgresql_where=(completed_at.is_(None)),
-            name="ix_lead_follow_ups_org_scheduled_pending",
         ),
-        {"extend_existing": True},
     )
 
     @classmethod
@@ -341,16 +339,20 @@ class LeadActivity(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        Index("lead_id", "performed_at", name="ix_lead_activities_lead_performed_at"),
-        Index("organization_id", "performed_by", "performed_at"),
-        {"extend_existing": True},
+        Index("ix_lead_activities_lead_performed_at", "lead_id", "performed_at"),
+        Index(
+            "ix_lead_activities_organization_id_performed_by_performed_at",
+            "organization_id",
+            "performed_by",
+            "performed_at",
+        ),
     )
 
     def __repr__(self) -> str:
         return f"<LeadActivity(id={self.id}, lead_id={self.lead_id}, kind={self.kind})>"
 
 
-class Note(Base, AuditMixin):
+class Note(Base, AuditMixin, SoftDeleteMixin):
     __tablename__ = "notes"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -378,8 +380,7 @@ class Note(Base, AuditMixin):
 
     __table_args__ = (
         Index("ix_notes_org_parent", "organization_id", "parent_type", "parent_id"),
-        Index("author_id"),
-        {"extend_existing": True},
+        Index("ix_notes_author_id", "author_id"),
     )
 
     @classmethod

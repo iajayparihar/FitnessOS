@@ -92,19 +92,23 @@ class AIFeatureUsage(Base):
         CheckConstraint(
             "cost_paise >= 0", name="ck_ai_feature_usage_cost_non_negative"
         ),
-        Index("organization_id", recorded_at.desc()),
         Index(
+            "ix_ai_feature_usage_organization_id_recorded_at",
+            "organization_id",
+            recorded_at.desc(),
+        ),
+        Index(
+            "ix_ai_usage_org_feature_time",
             "organization_id",
             "feature_type",
             recorded_at,
-            name="ix_ai_usage_org_feature_time",
         ),
         Index(
+            "ix_ai_usage_org_member_id",
             "organization_id",
             "member_id",
             postgresql_where=member_id.isnot(None),
         ),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:

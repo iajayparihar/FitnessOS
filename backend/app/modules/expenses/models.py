@@ -20,6 +20,7 @@ from sqlalchemy import (
     CheckConstraint,
     Index,
     func,
+    text,
     Enum as sa_Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
@@ -75,13 +76,12 @@ class ExpenseCategory(Base, TimestampMixin):
     color: Mapped[Optional[str]] = mapped_column(Text, default=None)
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_expense_categories_org_name",
             "organization_id",
             func.lower(name),
-            name="uq_expense_categories_org_name",
+            unique=True,
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -142,9 +142,8 @@ class Expense(Base, AuditMixin):
 
     __table_args__ = (
         CheckConstraint("amount_cents > 0", name="ck_expenses_amount_positive"),
-        Index("organization_id", incurred_at.desc()),
-        Index("organization_id", "category_id"),
-        {"extend_existing": True},
+        Index("ix_expenses_organization_id_incurred_at", "organization_id", incurred_at.desc()),
+        Index("ix_expenses_organization_id_category_id", "organization_id", "category_id"),
     )
 
     def __repr__(self) -> str:
@@ -191,11 +190,12 @@ class PayrollEmployee(Base, AuditMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_payroll_employees_org_user",
             "organization_id",
             "user_id",
-            name="uq_payroll_employees_org_user",
-            postgresql_where=deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         CheckConstraint(
             "salary_cents IS NULL OR salary_cents >= 0",
@@ -205,7 +205,6 @@ class PayrollEmployee(Base, AuditMixin):
             "leaving_date IS NULL OR leaving_date >= joining_date",
             name="ck_payroll_employees_leaving_after_joining",
         ),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:
@@ -269,8 +268,11 @@ class PayrollRun(Base, AuditMixin):
         CheckConstraint(
             "total_net_cents >= 0", name="ck_payroll_runs_net_non_negative"
         ),
-        Index("organization_id", period_start.desc()),
-        {"extend_existing": True},
+        Index(
+            "ix_payroll_runs_organization_id_period_start",
+            "organization_id",
+            period_start.desc(),
+        ),
     )
 
     def __repr__(self) -> str:
@@ -327,8 +329,6 @@ class PayrollItem(Base, TimestampMixin):
         UniqueConstraint(
             "payroll_run_id", "employee_id", name="uq_payroll_items_run_employee"
         ),
-        Index("payroll_run_id"),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:

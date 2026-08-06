@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     database_url: str
-
+    echo: bool = False
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

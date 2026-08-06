@@ -73,15 +73,15 @@ class NotificationTemplate(Base, AuditMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_notif_templates_org_code_channel",
             "organization_id",
             "code",
             "channel",
-            name="uq_notif_templates_org_code_channel",
-            postgresql_where=deleted_at.is_(None),
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index("organization_id", "is_active"),
-        {"extend_existing": True},
+        Index("ix_notification_templates_organization_id_is_active", "organization_id", "is_active"),
     )
 
     @classmethod
@@ -174,19 +174,19 @@ class Notification(Base, AuditMixin):
             name="ck_notifications_has_recipient",
         ),
         Index(
+            "ix_notifications_pending_queue",
             "status",
             "scheduled_at",
             postgresql_where=text("status IN ('pending','queued')"),
-            name="ix_notifications_pending_queue",
         ),
         Index(
+            "ix_notifications_organization_id_recipient",
             "organization_id",
             "recipient_type",
             "recipient_id",
             postgresql_where=recipient_id.isnot(None),
         ),
-        Index("organization_id", sent_at.desc()),
-        {"extend_existing": True},
+        Index("ix_notifications_organization_id_sent_at", "organization_id", sent_at.desc()),
     )
 
     @classmethod
@@ -235,7 +235,7 @@ class NotificationLog(Base, TimestampMixin):
 
     __table_args__ = (
         Index("notification_id", attempted_at.desc()),
-        {"extend_existing": True},
+         
     )
 
     def __repr__(self) -> str:
@@ -283,8 +283,13 @@ class NotificationPreference(Base, TimestampMixin):
             "template_code",
             name="uq_notif_prefs_recipient_channel_template",
         ),
-        Index("organization_id", "recipient_type", "recipient_id"),
-        {"extend_existing": True},
+        Index(
+            "ix_notification_preferences_organization_id_recipient",
+            "organization_id",
+            "recipient_type",
+            "recipient_id",
+        ),
+         
     )
 
     def __repr__(self) -> str:

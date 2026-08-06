@@ -225,6 +225,7 @@ uv run python -m alembic -c alembic.ini history
 
 ```bash
 cd backend
+uv run alembic revision --autogenerate -m "Initial schema"
 uv run python -m alembic -c alembic.ini upgrade head
 ```
 

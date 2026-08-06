@@ -12,6 +12,7 @@ dependencies = [
     "sqlalchemy>=2.0.51",
     "uvicorn>=0.52.1",
     "asyncpg>=0.31.0",
+    "mako>=1.4.1",
 ]
 
 [build-system]

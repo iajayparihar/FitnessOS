@@ -71,22 +71,22 @@ class AuditLog(Base):
     )
 
     __table_args__ = (
-        Index("organization_id", created_at.desc(), name="ix_audit_logs_org_time"),
+        Index("ix_audit_logs_org_time", "organization_id", created_at.desc()),
         Index(
+            "ix_audit_logs_org_actor_time",
             "organization_id",
             "actor_id",
             created_at.desc(),
             postgresql_where=actor_id.isnot(None),
-            name="ix_audit_logs_org_actor_time",
         ),
         Index(
+            "ix_audit_logs_target",
             "organization_id",
             "target_type",
             "target_id",
             postgresql_where=target_id.isnot(None),
-            name="ix_audit_logs_target",
         ),
-        {"extend_existing": True},
+         
     )
 
     def __repr__(self) -> str:
@@ -138,9 +138,9 @@ class ReportSnapshot(Base):
             "period_end >= period_start",
             name="ck_report_snapshots_period_order",
         ),
-        Index("organization_id", "report_key", period_start.desc()),
-        {"extend_existing": True},
-    )
+        Index("ix_audit_logs_organization_id_report_key_period_start", "organization_id", "report_key", period_start.desc(),
+         
+    ))
 
     def __repr__(self) -> str:
         return (

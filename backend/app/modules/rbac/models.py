@@ -20,6 +20,7 @@ from sqlalchemy import (
     Index,
     func,
     Enum as sa_Enum,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -37,7 +38,7 @@ from app.core.mixins import (
 # RLS POLICY — permissions, role_permissions: no filter (global read)
 
 
-class Role(Base, TimestampMixin):
+class Role(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "roles"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -57,19 +58,20 @@ class Role(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (
-        UniqueConstraint(
-            organization_id,
+        Index(
+            "uq_roles_org_slug",
+            "organization_id",
             func.lower(slug),
-            name="uq_roles_org_slug",
-            postgresql_where=(organization_id.isnot(None) & deleted_at.is_(None)),
+            unique=True,
+            postgresql_where=text("organization_id IS NOT NULL AND deleted_at IS NULL"),
         ),
-        UniqueConstraint(
+        Index(
+            "uq_roles_system_slug",
             func.lower(slug),
-            name="uq_roles_system_slug",
-            postgresql_where=organization_id.is_(None),
+            unique=True,
+            postgresql_where=text("organization_id IS NULL"),
         ),
-        Index("organization_id"),
-        {"extend_existing": True},
+        Index("ix_roles_organization_id", "organization_id"),
     )
 
     def __repr__(self) -> str:
@@ -93,8 +95,7 @@ class Permission(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (
-        Index("code"),
-        {"extend_existing": True},
+        Index("ix_permissions_code", "code"),
     )
 
     def __repr__(self) -> str:
@@ -124,8 +125,7 @@ class RolePermission(Base):
     )
 
     __table_args__ = (
-        Index("permission_id"),
-        {"extend_existing": True},
+        Index("ix_role_permissions_permission_id", "permission_id"),
     )
 
     def __repr__(self) -> str:
@@ -188,9 +188,8 @@ class UserRole(Base):
             "branch_id",
             name="uq_user_roles_assignment",
         ),
-        Index("organization_id", "user_id"),
-        Index("role_id"),
-        {"extend_existing": True},
+        Index("ix_user_roles_organization_id_user_id", "organization_id", "user_id"),
+        Index("ix_user_roles_role_id", "role_id"),
     )
 
     def __repr__(self) -> str:
@@ -232,8 +231,7 @@ class ApiKey(Base, AuditMixin):
 
     __table_args__ = (
         UniqueConstraint("key_hash", name="uq_api_keys_hash"),
-        Index("organization_id", "is_active"),
-        {"extend_existing": True},
+        Index("ix_api_keys_organization_id_is_active", "organization_id", "is_active"),
     )
 
     @classmethod

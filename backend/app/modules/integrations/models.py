@@ -81,8 +81,7 @@ class Webhook(Base, AuditMixin):
         CheckConstraint(
             "failure_count >= 0", name="ck_webhooks_failure_count_non_negative"
         ),
-        Index("organization_id", "is_active"),
-        {"extend_existing": True},
+        Index("ix_webhooks_organization_id_is_active", "organization_id", "is_active"),
     )
 
     @classmethod
@@ -150,15 +149,14 @@ class WebhookDelivery(Base):
         CheckConstraint(
             "retry_count >= 0", name="ck_webhook_deliveries_retry_count_non_negative"
         ),
-        Index("webhook_id", attempted_at.desc()),
+        Index("ix_webhook_deliveries_webhook_id_attempted_at", "webhook_id", attempted_at.desc()),
         Index(
+            "ix_webhook_deliveries_retry_queue",
             "organization_id",
             "status",
             "next_retry_at",
             postgresql_where=text("status IN ('pending','retrying')"),
-            name="ix_webhook_deliveries_retry_queue",
         ),
-        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:

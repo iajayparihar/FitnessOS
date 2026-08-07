@@ -25,3 +25,7 @@ class Base(DeclarativeBase):
         dict: JSONB,
         list: ARRAY(str),
     }
+
+
+# Ensure all SQLAlchemy models are imported and registered with Base.metadata
+import app.db.models  # noqa: F401

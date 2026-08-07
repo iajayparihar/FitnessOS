@@ -26,13 +26,14 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.base import Base
+from app.db.base import Base
 from app.core.mixins import (
     TimestampMixin,
     AuditMixin,
     TenantScopedMixin,
     SoftDeleteMixin,
 )
+from app.modules.tenants.models import Organization
 
 
 class AuthProvider(str, enum.Enum):

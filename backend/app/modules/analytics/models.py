@@ -25,7 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.base import Base
+from app.db.base import Base
 from app.core.enums import ActorType
 
 # SECURITY: This table must have NO UPDATE or DELETE privileges

@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import settings
-from app.core.base import Base as BaseModel
+from app.db.base import Base as BaseModel
 from app.core.database import get_database_url  # noqa: F401
 
 # Import all models so Alembic autogeneration can detect table metadata.

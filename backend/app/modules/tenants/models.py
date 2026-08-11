@@ -44,7 +44,11 @@ class Organization(Base, AuditMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     slug: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[OrganizationStatus] = mapped_column(
-        sa_Enum(OrganizationStatus, name="organizationstatus"),
+        sa_Enum(
+            OrganizationStatus,
+            name="organizationstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=OrganizationStatus.ACTIVE,
     )

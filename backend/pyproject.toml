@@ -25,6 +25,11 @@ include = ["app*"]
 [tool.black]
 line-length = 88
 
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [tool.docformatter]
 recursive = true
 wrap-summaries = 88

@@ -187,7 +187,11 @@ class UserAuthMethod(Base, TimestampMixin):
         index=True,
     )
     provider: Mapped[AuthProvider] = mapped_column(
-        sa_Enum(AuthProvider, name="authprovider"),
+        sa_Enum(
+            AuthProvider,
+            name="authprovider",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     provider_uid: Mapped[Optional[str]] = mapped_column(Text, default=None)

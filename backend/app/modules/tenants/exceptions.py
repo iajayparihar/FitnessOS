@@ -1,2 +1,2 @@
 class OrgNotFound(Exception):
-    pass
+    """Raised when an organization is not visible to the current caller."""

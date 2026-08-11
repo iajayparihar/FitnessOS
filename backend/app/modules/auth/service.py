@@ -18,6 +18,7 @@ from app.core.security import (
 from app.modules.auth.exceptions import InactiveUser, InvalidCredentials
 from app.modules.auth.models import AuthProvider, Session, User, UserAuthMethod, UserProfile
 from app.modules.auth.schemas import LoginRequest, RegisterRequest
+from app.modules.rbac.service import assign_role_to_user, ensure_owner_role
 from app.modules.tenants.models import Organization
 from app.modules.tenants.service import create_org, ensure_slug_available, make_slug
 
@@ -67,6 +68,15 @@ async def register_owner(
     await db.flush()
     organization.created_by = user.id
     organization.updated_by = user.id
+
+    owner_role = await ensure_owner_role(db, organization_id=organization.id)
+    await assign_role_to_user(
+        db,
+        user_id=user.id,
+        role_id=owner_role.id,
+        organization_id=organization.id,
+        assigned_by=user.id,
+    )
     access_token, refresh_token = await create_session_tokens(db, user=user)
     await db.commit()
     await db.refresh(user)
@@ -115,6 +125,15 @@ async def login(
     now = datetime.now(UTC)
     user.last_login_at = now
     password_method.last_used_at = now
+    if user.organization is not None and user.organization.created_by == user.id:
+        owner_role = await ensure_owner_role(db, organization_id=user.organization_id)
+        await assign_role_to_user(
+            db,
+            user_id=user.id,
+            role_id=owner_role.id,
+            organization_id=user.organization_id,
+            assigned_by=user.id,
+        )
     access_token, refresh_token = await create_session_tokens(db, user=user)
     await db.commit()
     await db.refresh(user)

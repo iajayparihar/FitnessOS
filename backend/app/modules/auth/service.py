@@ -127,11 +127,6 @@ async def create_session_tokens(
     user: User,
 ) -> tuple[str, str]:
     """Create an access token and persist a hashed refresh token."""
-    access_token = create_access_token(
-        subject=user.id,
-        organization_id=user.organization_id,
-        is_superuser=user.is_superuser,
-    )
     refresh_token = create_refresh_token()
     session = Session(
         user_id=user.id,
@@ -141,7 +136,30 @@ async def create_session_tokens(
         + timedelta(days=settings.jwt_refresh_token_expire_days),
     )
     db.add(session)
+    await db.flush()
+    access_token = create_access_token(
+        subject=user.id,
+        organization_id=user.organization_id,
+        is_superuser=user.is_superuser,
+        session_id=session.id,
+    )
     return access_token, refresh_token
+
+
+async def get_valid_session_by_id(
+    db: AsyncSession,
+    *,
+    session_id: uuid.UUID,
+) -> Session | None:
+    """Return a non-revoked, non-expired session by id."""
+    result = await db.execute(
+        select(Session).where(
+            Session.id == session_id,
+            Session.revoked_at.is_(None),
+            Session.expires_at > datetime.now(UTC),
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 async def refresh_tokens(

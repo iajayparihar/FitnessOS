@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decode_jwt
 from app.db.session import get_db
 from app.modules.auth.models import User
-from app.modules.auth.service import get_user_by_id
+from app.modules.auth.service import get_user_by_id, get_valid_session_by_id
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -30,11 +30,19 @@ async def get_current_user(
         if payload.get("type") != "access":
             raise ValueError("Expected access token.")
         user_id = uuid.UUID(str(payload["sub"]))
+        session_id = uuid.UUID(str(payload["sid"]))
     except (KeyError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid access token.",
         ) from exc
+
+    session = await get_valid_session_by_id(db, session_id=session_id)
+    if session is None or session.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token.",
+        )
 
     user = await get_user_by_id(db, user_id=user_id)
     if user is None or not user.is_active:

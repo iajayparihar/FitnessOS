@@ -86,6 +86,7 @@ def create_access_token(
     subject: uuid.UUID,
     organization_id: uuid.UUID | None,
     is_superuser: bool,
+    session_id: uuid.UUID,
 ) -> str:
     """Create a short-lived access token for a user."""
     now = datetime.now(UTC)
@@ -93,6 +94,7 @@ def create_access_token(
     return encode_jwt(
         {
             "sub": subject,
+            "sid": session_id,
             "organization_id": organization_id,
             "is_superuser": is_superuser,
             "iat": now,

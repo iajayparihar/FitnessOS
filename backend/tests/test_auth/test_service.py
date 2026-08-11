@@ -25,11 +25,13 @@ def test_access_token_round_trip():
         subject=user_id,
         organization_id=organization_id,
         is_superuser=False,
+        session_id=uuid.uuid4(),
     )
     payload = decode_jwt(token)
 
     assert payload["sub"] == str(user_id)
     assert payload["organization_id"] == str(organization_id)
+    assert "sid" in payload
     assert payload["type"] == "access"
 
 
@@ -38,6 +40,7 @@ def test_decode_jwt_rejects_tampered_signature():
         subject=uuid.uuid4(),
         organization_id=None,
         is_superuser=False,
+        session_id=uuid.uuid4(),
     )
     header, payload, signature = token.split(".")
 

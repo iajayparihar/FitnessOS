@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_jwt
+from app.core.security import TokenExpired, decode_jwt
 from app.db.session import get_db
 from app.modules.auth.models import User
 from app.modules.auth.service import get_user_by_id, get_valid_session_by_id
@@ -31,6 +31,11 @@ async def get_current_user(
             raise ValueError("Expected access token.")
         user_id = uuid.UUID(str(payload["sub"]))
         session_id = uuid.UUID(str(payload["sid"]))
+    except TokenExpired as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Access token has expired.",
+        ) from exc
     except (KeyError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

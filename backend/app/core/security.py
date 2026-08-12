@@ -14,6 +14,10 @@ from app.config import settings
 PBKDF2_ITERATIONS = 260_000
 
 
+class TokenExpired(ValueError):
+    """Raised when a JWT is valid but past its expiration time."""
+
+
 def _base64url_encode(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
@@ -76,7 +80,7 @@ def decode_jwt(token: str) -> dict[str, Any]:
     payload = json.loads(_base64url_decode(encoded_payload))
     expires_at = payload.get("exp")
     if expires_at is not None and datetime.now(UTC).timestamp() >= expires_at:
-        raise ValueError("Token has expired.")
+        raise TokenExpired("Token has expired.")
 
     return payload
 

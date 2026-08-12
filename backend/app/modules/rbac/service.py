@@ -6,6 +6,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.analytics.service import log_audit_event
 from app.modules.auth.models import User
 from app.modules.rbac.exceptions import (
     BranchNotInOrganization,
@@ -139,6 +140,7 @@ async def create_role(
     *,
     organization_id: uuid.UUID,
     payload: RoleCreate,
+    actor_id: uuid.UUID | None = None,
 ) -> Role:
     """Create a tenant role with optional permissions."""
     role = Role(
@@ -159,6 +161,24 @@ async def create_role(
     for permission in permissions:
         db.add(RolePermission(role_id=role.id, permission_id=permission.id, granted=True))
 
+    await log_audit_event(
+        db,
+        action="rbac.role.create",
+        organization_id=organization_id,
+        actor_id=actor_id,
+        target_type="role",
+        target_id=role.id,
+        after_state={
+            "id": str(role.id),
+            "organization_id": str(organization_id),
+            "name": role.name,
+            "slug": role.slug,
+            "description": role.description,
+            "is_system": role.is_system,
+            "is_active": role.is_active,
+            "permission_codes": [permission.code for permission in permissions],
+        },
+    )
     await db.commit()
     await db.refresh(role)
     return role
@@ -264,6 +284,22 @@ async def assign_role_to_user(
         )
         db.add(assignment)
         await db.flush()
+        await log_audit_event(
+            db,
+            action="rbac.user_role.assign",
+            organization_id=organization_id,
+            actor_id=assigned_by,
+            target_type="user_role",
+            target_id=assignment.id,
+            after_state={
+                "id": str(assignment.id),
+                "user_id": str(user_id),
+                "role_id": str(role_id),
+                "organization_id": str(organization_id),
+                "branch_id": str(branch_id) if branch_id is not None else None,
+                "assigned_by": str(assigned_by) if assigned_by is not None else None,
+            },
+        )
     return assignment
 
 

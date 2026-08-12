@@ -66,6 +66,7 @@ async def post_role(
             db,
             organization_id=current_user.organization_id,
             payload=payload,
+            actor_id=current_user.id,
         )
     except PermissionNotFound as exc:
         raise HTTPException(

@@ -45,6 +45,11 @@ class AuthProvider(str, enum.Enum):
     MAGICLINK = "magiclink"
 
 
+class AuthActionTokenPurpose(str, enum.Enum):
+    PASSWORD_RESET = "password_reset"
+    EMAIL_VERIFICATION = "email_verification"
+
+
 class User(Base, AuditMixin):
     __tablename__ = "users"
 
@@ -279,6 +284,69 @@ class Session(Base, TimestampMixin):
         return (
             f"<Session(id={self.id}, user_id={self.user_id}, "
             f"expires_at={self.expires_at}, revoked_at={self.revoked_at})>"
+        )
+
+
+class AuthActionToken(Base):
+    __tablename__ = "auth_action_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        default=None,
+    )
+    purpose: Mapped[AuthActionTokenPurpose] = mapped_column(
+        sa_Enum(
+            AuthActionTokenPurpose,
+            name="authactiontokenpurpose",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
+        nullable=False,
+    )
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    used_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        default=None,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship("User")
+
+    __table_args__ = (
+        Index("ix_auth_action_tokens_token_hash", "token_hash"),
+        Index("ix_auth_action_tokens_user_purpose", "user_id", "purpose"),
+        Index("ix_auth_action_tokens_purpose_expires_at", "purpose", "expires_at"),
+        Index(
+            "ix_auth_action_tokens_org_purpose_created_at",
+            "organization_id",
+            "purpose",
+            created_at.desc(),
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<AuthActionToken(id={self.id}, user_id={self.user_id}, "
+            f"purpose={self.purpose}, expires_at={self.expires_at})>"
         )
 
 

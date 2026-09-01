@@ -38,6 +38,33 @@ class LogoutRequest(BaseModel):
     refresh_token: str = Field(min_length=32)
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Payload for requesting a password reset link."""
+
+    email: str = Field(min_length=3, max_length=320)
+    organization_id: uuid.UUID | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    """Payload for completing password reset."""
+
+    token: str = Field(min_length=32, max_length=512)
+    new_password: str = Field(min_length=8, max_length=256)
+
+
+class VerifyEmailRequest(BaseModel):
+    """Payload for email verification."""
+
+    token: str = Field(min_length=32, max_length=512)
+
+
+class ResendVerificationRequest(BaseModel):
+    """Payload for requesting another verification email."""
+
+    email: str = Field(min_length=3, max_length=320)
+    organization_id: uuid.UUID | None = None
+
+
 class UserResponse(BaseModel):
     """Authenticated user response payload."""
 

@@ -4,22 +4,35 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_current_user
-from app.modules.auth.exceptions import InactiveUser, InvalidCredentials
+from app.modules.auth.exceptions import (
+    AuthActionRateLimited,
+    InactiveUser,
+    InvalidAuthActionToken,
+    InvalidCredentials,
+)
 from app.modules.auth.models import User
 from app.modules.auth.schemas import (
     AuthData,
     AuthResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
     RegisterRequest,
+    ResendVerificationRequest,
+    ResetPasswordRequest,
     UserEnvelope,
+    VerifyEmailRequest,
 )
 from app.modules.auth.service import (
     login,
+    request_password_reset,
     refresh_tokens,
     register_owner,
+    resend_email_verification,
+    reset_password,
     revoke_refresh_token,
+    verify_email,
 )
 
 router = APIRouter()
@@ -117,6 +130,67 @@ async def logout(
 ) -> Response:
     """Revoke a refresh token."""
     await revoke_refresh_token(db, refresh_token=payload.refresh_token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Request a password reset email without revealing account existence."""
+    await request_password_reset(db, payload=payload)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+async def post_reset_password(
+    payload: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Reset a password using a valid one-time token."""
+    try:
+        await reset_password(db, payload=payload)
+    except InvalidAuthActionToken as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token.",
+        ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+async def post_verify_email(
+    payload: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Verify an email address using a valid one-time token."""
+    try:
+        await verify_email(db, payload=payload)
+    except InvalidAuthActionToken as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token.",
+        ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+async def post_resend_verification(
+    payload: ResendVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Request another verification email for an unverified account."""
+    try:
+        await resend_email_verification(db, payload=payload)
+    except AuthActionRateLimited as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Please wait before requesting another verification email.",
+        ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 30
+    password_reset_token_expire_minutes: int = 30
+    email_verification_token_expire_hours: int = 24
+    auth_action_token_cooldown_seconds: int = 60
+    auth_frontend_base_url: str = "http://localhost:3000"
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

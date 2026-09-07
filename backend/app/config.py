@@ -1,7 +1,7 @@
 """This module contains the configuration settings for the application."""
 
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     database_url: str
     echo: bool = False
-    jwt_secret_key: str = "change-this-local-development-secret"
+    jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 30
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     clerk_jwks_url: str | None = None
     clerk_jwt_key: str | None = None
     clerk_issuer: str | None = None
-    clerk_authorized_parties: list[str] = []
+    clerk_authorized_parties: list[str] = Field(default_factory=list)
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

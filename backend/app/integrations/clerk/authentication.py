@@ -3,12 +3,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.clerk.client import clerk_client
 from app.integrations.clerk.exceptions import ClerkAuthenticationError
 from app.modules.auth.exceptions import InactiveUser, InvalidCredentials
-from app.modules.auth.models import User
+from app.modules.auth.models import AuthProvider, User, UserAuthMethod
 
 
 async def get_user_by_clerk_id(db: AsyncSession, *, clerk_user_id: str) -> User | None:
@@ -22,18 +23,41 @@ async def get_user_by_clerk_id(db: AsyncSession, *, clerk_user_id: str) -> User 
     return result.scalar_one_or_none()
 
 
+async def ensure_clerk_auth_method(db: AsyncSession, *, user: User, clerk_user_id: str) -> User:
+    """Ensure the user has exactly one Clerk auth method bound to the current identity."""
+    for auth_method in user.auth_methods:
+        if auth_method.provider == AuthProvider.CLERK:
+            if auth_method.provider_uid != clerk_user_id:
+                auth_method.provider_uid = clerk_user_id
+                auth_method.last_used_at = datetime.now(UTC)
+            return user
+
+    user.auth_methods.append(
+        UserAuthMethod(
+            provider=AuthProvider.CLERK,
+            provider_uid=clerk_user_id,
+            is_primary=True,
+            last_used_at=datetime.now(UTC),
+        )
+    )
+    return user
+
+
 async def provision_user_from_clerk_claims(
     db: AsyncSession,
     *,
     claims: dict,
 ) -> User:
-    """Create an idempotent local user for a valid Clerk identity."""
+    """Create a local user for a valid Clerk identity without duplicating records."""
     clerk_user_id = str(claims.get("sub") or "").strip()
     if not clerk_user_id:
         raise ClerkAuthenticationError("Clerk token did not contain a user id.")
 
     existing_user = await get_user_by_clerk_id(db, clerk_user_id=clerk_user_id)
     if existing_user is not None:
+        await ensure_clerk_auth_method(db, user=existing_user, clerk_user_id=clerk_user_id)
+        await db.flush()
+        await db.commit()
         return existing_user
 
     email = claims.get("email") or claims.get("primary_email") or f"clerk-{clerk_user_id}@local.invalid"
@@ -49,8 +73,14 @@ async def provision_user_from_clerk_claims(
     )
     existing_email_user = result.scalar_one_or_none()
     if existing_email_user is not None:
+        if existing_email_user.clerk_user_id not in (None, clerk_user_id):
+            raise ClerkAuthenticationError(
+                "This email is already linked to a different account."
+            )
         existing_email_user.clerk_user_id = clerk_user_id
+        await ensure_clerk_auth_method(db, user=existing_email_user, clerk_user_id=clerk_user_id)
         await db.flush()
+        await db.commit()
         return existing_email_user
 
     user = User(
@@ -61,8 +91,20 @@ async def provision_user_from_clerk_claims(
         is_superuser=False,
         last_login_at=datetime.now(UTC),
     )
+    await ensure_clerk_auth_method(db, user=user, clerk_user_id=clerk_user_id)
     db.add(user)
-    await db.flush()
+    try:
+        await db.flush()
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        user = await get_user_by_clerk_id(db, clerk_user_id=clerk_user_id)
+        if user is None:
+            raise ClerkAuthenticationError("Clerk user could not be created reliably.")
+        await ensure_clerk_auth_method(db, user=user, clerk_user_id=clerk_user_id)
+        await db.flush()
+        await db.commit()
+        return user
     return user
 
 
@@ -80,10 +122,11 @@ async def authenticate_clerk_session(
     user = await get_user_by_clerk_id(db, clerk_user_id=clerk_user_id)
     if user is None:
         user = await provision_user_from_clerk_claims(db, claims=claims)
-        await db.commit()
     else:
         user.last_login_at = datetime.now(UTC)
+        await ensure_clerk_auth_method(db, user=user, clerk_user_id=clerk_user_id)
         await db.flush()
+        await db.commit()
 
     if user is None or not user.is_active:
         raise InactiveUser

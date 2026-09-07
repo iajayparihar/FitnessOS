@@ -231,6 +231,13 @@ class UserAuthMethod(Base, TimestampMixin):
             "user_id",
         ),
         Index(
+            "uq_user_auth_methods_provider_uid",
+            "provider",
+            "provider_uid",
+            unique=True,
+            postgresql_where=text("provider_uid IS NOT NULL"),
+        ),
+        Index(
             "ix_user_auth_methods_provider_uid",
             "provider",
             "provider_uid",

@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
+from app.config import settings
 from app.core.security import (
     TokenExpired,
     create_access_token,
@@ -13,7 +14,18 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.integrations.clerk.client import ClerkClient
+from app.integrations.clerk.exceptions import ClerkAuthenticationError, ClerkConfigurationError
 from app.modules.auth.dependencies import get_current_user
+
+
+@pytest.fixture(autouse=True)
+def configure_runtime_settings(monkeypatch):
+    monkeypatch.setattr(settings, "jwt_secret_key", "test-secret-key-for-auth-tests")
+    monkeypatch.setattr(settings, "clerk_jwt_key", None)
+    monkeypatch.setattr(settings, "clerk_jwks_url", None)
+    monkeypatch.setattr(settings, "clerk_issuer", "https://example.clerk.accounts.dev")
+    monkeypatch.setattr(settings, "clerk_authorized_parties", ["https://example.com"])
 
 
 def test_password_hash_round_trip():
@@ -88,3 +100,34 @@ def test_get_current_user_reports_expired_access_token():
 
     assert exc.value.status_code == 401
     assert exc.value.detail == "Access token has expired."
+
+
+def test_create_access_token_requires_configured_secret(monkeypatch):
+    monkeypatch.setattr(settings, "jwt_secret_key", "")
+
+    with pytest.raises(ValueError, match="JWT secret is not configured"):
+        create_access_token(
+            subject=uuid.uuid4(),
+            organization_id=None,
+            is_superuser=False,
+            session_id=uuid.uuid4(),
+        )
+
+
+def test_clerk_client_requires_configured_authorized_parties(monkeypatch):
+    monkeypatch.setattr(settings, "clerk_issuer", "https://example.clerk.accounts.dev")
+    monkeypatch.setattr(settings, "clerk_authorized_parties", [])
+    monkeypatch.setattr(settings, "clerk_jwks_url", None)
+    monkeypatch.setattr(settings, "clerk_jwt_key", None)
+
+    with pytest.raises(ClerkConfigurationError, match="authorized parties"):
+        ClerkClient().verify_session_token("token")
+
+
+def test_clerk_client_rejects_malformed_token(monkeypatch):
+    monkeypatch.setattr(settings, "clerk_issuer", "https://example.clerk.accounts.dev")
+    monkeypatch.setattr(settings, "clerk_authorized_parties", ["https://example.com"])
+    monkeypatch.setattr(settings, "clerk_jwt_key", "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArandomvalue\n-----END PUBLIC KEY-----")
+
+    with pytest.raises(ClerkAuthenticationError, match="Invalid Clerk token"):
+        ClerkClient().verify_session_token("not-a-valid-jwt")

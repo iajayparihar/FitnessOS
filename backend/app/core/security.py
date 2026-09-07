@@ -18,6 +18,14 @@ class TokenExpired(ValueError):
     """Raised when a JWT is valid but past its expiration time."""
 
 
+def _raise_if_missing_jwt_secret() -> str:
+    """Require a non-empty JWT secret to prevent insecure default config."""
+    secret = (settings.jwt_secret_key or "").strip()
+    if not secret:
+        raise ValueError("JWT secret is not configured. Set JWT_SECRET_KEY.")
+    return secret
+
+
 def _base64url_encode(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
@@ -48,12 +56,13 @@ def encode_jwt(payload: dict[str, Any]) -> str:
     if settings.jwt_algorithm != "HS256":
         raise ValueError("Only HS256 JWT signing is supported by this baseline.")
 
+    secret = _raise_if_missing_jwt_secret()
     header = {"alg": settings.jwt_algorithm, "typ": "JWT"}
     encoded_header = _base64url_encode(_json_dumps(header))
     encoded_payload = _base64url_encode(_json_dumps(_normalize_claims(payload)))
     signing_input = f"{encoded_header}.{encoded_payload}".encode("ascii")
     signature = hmac.new(
-        settings.jwt_secret_key.encode("utf-8"),
+        secret.encode("utf-8"),
         signing_input,
         hashlib.sha256,
     ).digest()
@@ -62,6 +71,7 @@ def encode_jwt(payload: dict[str, Any]) -> str:
 
 def decode_jwt(token: str) -> dict[str, Any]:
     """Verify and decode a JWT, raising ValueError for invalid tokens."""
+    secret = _raise_if_missing_jwt_secret()
     try:
         encoded_header, encoded_payload, encoded_signature = token.split(".")
     except ValueError as exc:
@@ -69,7 +79,7 @@ def decode_jwt(token: str) -> dict[str, Any]:
 
     signing_input = f"{encoded_header}.{encoded_payload}".encode("ascii")
     expected_signature = hmac.new(
-        settings.jwt_secret_key.encode("utf-8"),
+        secret.encode("utf-8"),
         signing_input,
         hashlib.sha256,
     ).digest()

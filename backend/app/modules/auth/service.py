@@ -223,3 +223,16 @@ async def revoke_refresh_token(
     if session is not None and session.revoked_at is None:
         session.revoked_at = datetime.now(UTC)
         await db.commit()
+
+
+async def get_user_by_clerk_id(db: AsyncSession, *, clerk_user_id: str) -> User | None:
+    """Return the active, non-deleted FitnessOS user for a Clerk user id."""
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.organization))
+        .where(
+            User.clerk_user_id == clerk_user_id,
+            User.deleted_at.is_(None),
+        )
+    )
+    return result.scalar_one_or_none()

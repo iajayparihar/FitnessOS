@@ -38,6 +38,7 @@ from app.modules.tenants.models import Organization
 
 class AuthProvider(str, enum.Enum):
     PASSWORD = "password"
+    CLERK = "clerk"
     GOOGLE = "google"
     APPLE = "apple"
     TOTP = "totp"
@@ -57,6 +58,12 @@ class User(Base, AuditMixin):
         UUID(as_uuid=True),
         ForeignKey("organizations.id", ondelete="SET NULL"),
         default=None,
+    )
+    clerk_user_id: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+        unique=False,
     )
     email: Mapped[str] = mapped_column(Text, nullable=False)
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -113,7 +120,14 @@ class User(Base, AuditMixin):
 
     __table_args__ = (
         Index("ix_users_organization_id", "organization_id"),
+        Index("ix_users_clerk_user_id", "clerk_user_id"),
         Index("ix_users_email_lower", func.lower(email)),
+        Index(
+            "uq_users_clerk_user_id",
+            "clerk_user_id",
+            unique=True,
+            postgresql_where=text("clerk_user_id IS NOT NULL AND deleted_at IS NULL"),
+        ),
         Index(
             "uq_users_org_email",
             func.lower(email),
@@ -135,7 +149,8 @@ class User(Base, AuditMixin):
     def __repr__(self) -> str:
         return (
             f"<User(id={self.id}, email={self.email!r}, "
-            f"organization_id={self.organization_id}, is_superuser={self.is_superuser})>"
+            f"organization_id={self.organization_id}, clerk_user_id={self.clerk_user_id!r}, "
+            f"is_superuser={self.is_superuser})>"
         )
 
 

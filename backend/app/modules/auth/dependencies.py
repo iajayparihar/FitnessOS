@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import TokenExpired, decode_jwt
 from app.db.session import get_db
+from app.integrations.clerk.authentication import authenticate_clerk_session
+from app.integrations.clerk.exceptions import ClerkAuthenticationError, ClerkConfigurationError
+from app.modules.auth.exceptions import InactiveUser, InvalidCredentials
 from app.modules.auth.models import User
 from app.modules.auth.service import get_user_by_id, get_valid_session_by_id
 
@@ -25,8 +28,10 @@ async def get_current_user(
             detail="Authentication required.",
         )
 
+    token = credentials.credentials
+
     try:
-        payload = decode_jwt(credentials.credentials)
+        payload = decode_jwt(token)
         if payload.get("type") != "access":
             raise ValueError("Expected access token.")
         user_id = uuid.UUID(str(payload["sub"]))
@@ -37,10 +42,14 @@ async def get_current_user(
             detail="Access token has expired.",
         ) from exc
     except (KeyError, ValueError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token.",
-        ) from exc
+        try:
+            user = await authenticate_clerk_session(db, token=token)
+            return user
+        except (ClerkConfigurationError, ClerkAuthenticationError, InactiveUser, InvalidCredentials) as clerk_exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid access token.",
+            ) from clerk_exc
 
     session = await get_valid_session_by_id(db, session_id=session_id)
     if session is None or session.user_id != user_id:

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, FastAPI
 
+from app.core.logging import configure_logging
 from app.modules.analytics.router import router as analytics_router
 from app.modules.attendance.router import router as attendance_router
 from app.modules.auth.router import router as auth_router
@@ -59,6 +60,7 @@ def register_routes(app: FastAPI) -> None:
 
 
 def create_app() -> FastAPI:
+    configure_logging()
     app = FastAPI(title="Fitness Business OS API", version="0.1.0")
     register_routes(app)
     return app

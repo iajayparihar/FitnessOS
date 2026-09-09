@@ -3,6 +3,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.models import User
 from app.modules.tenants.dependencies import get_current_org
 from app.modules.tenants.models import Organization
 from app.modules.tenants.schemas import OrgCreate, OrgEnvelope
@@ -14,20 +16,36 @@ router = APIRouter()
 @router.post("", response_model=OrgEnvelope, status_code=status.HTTP_201_CREATED)
 async def create_organization(
     payload: OrgCreate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrgEnvelope:
-    """Create an organization tenant."""
+    """
+    Create an organization tenant.
+
+    Requires authentication. A user that already belongs to a tenant cannot mint
+    further tenants; onboarding a new Clerk user goes through
+    ``POST /api/v1/auth/onboarding``, which also assigns the owner role.
+    """
+    if current_user.organization_id is not None and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User already belongs to an organization.",
+        )
+
     slug = make_slug(payload.slug or payload.name)
     try:
         await ensure_slug_available(db, slug=slug)
         organization = await create_org(
             db,
             payload=payload.model_copy(update={"slug": slug}),
+            created_by=current_user.id,
         )
         await db.commit()
         await db.refresh(organization)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
     except IntegrityError as exc:
         await db.rollback()
         raise HTTPException(

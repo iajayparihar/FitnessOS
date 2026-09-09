@@ -49,7 +49,9 @@ class AuditLog(Base):
         UUID(as_uuid=True), default=None
     )
     actor_type: Mapped[ActorType] = mapped_column(
-        sa_Enum(ActorType, name="actortype"),
+        sa_Enum(ActorType, name="actortype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     action: Mapped[str] = mapped_column(Text, nullable=False)

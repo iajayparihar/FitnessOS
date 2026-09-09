@@ -1,5 +1,6 @@
 from logging.config import fileConfig
 import asyncio
+import os
 
 from alembic import context
 from sqlalchemy import pool
@@ -27,7 +28,6 @@ import app.modules.rbac.models  # noqa: F401
 import app.modules.subscriptions.models  # noqa: F401
 import app.modules.tenants.models  # noqa: F401
 import app.modules.trainer.models
-
 
 # Alembic Config object
 config = context.config
@@ -59,12 +59,18 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+# Optional schema override. Set ALEMBIC_SEARCH_PATH to run the migration chain
+# inside a dedicated schema (used by the test suite) instead of the default one.
+SEARCH_PATH = os.environ.get("ALEMBIC_SEARCH_PATH") or None
+
+
 def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
+        version_table_schema=SEARCH_PATH,
     )
 
     with context.begin_transaction():
@@ -73,9 +79,13 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode using an async engine."""
+    connect_args = (
+        {"server_settings": {"search_path": SEARCH_PATH}} if SEARCH_PATH else {}
+    )
     connectable = create_async_engine(
         get_database_url(),
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:

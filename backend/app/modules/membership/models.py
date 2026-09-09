@@ -92,7 +92,9 @@ class MembershipPlan(Base, AuditMixin):
     price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
     billing_cycle: Mapped[BillingCycle] = mapped_column(
-        sa_Enum(BillingCycle, name="billingcycle"),
+        sa_Enum(BillingCycle, name="billingcycle",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     duration_days: Mapped[Optional[int]] = mapped_column(Integer, default=None)
@@ -149,11 +151,15 @@ class Member(Base, AuditMixin):
     phone: Mapped[Optional[str]] = mapped_column(Text, default=None)
     dob: Mapped[Optional[Date]] = mapped_column(Date, default=None)
     gender: Mapped[Optional[Gender]] = mapped_column(
-        sa_Enum(Gender, name="gender"),
+        sa_Enum(Gender, name="gender",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         default=None,
     )
     status: Mapped[MemberStatus] = mapped_column(
-        sa_Enum(MemberStatus, name="memberstatus"),
+        sa_Enum(MemberStatus, name="memberstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=MemberStatus.ACTIVE,
     )
@@ -305,7 +311,9 @@ class MemberProfile(Base, TimestampMixin):
     )
     medical_notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
     blood_group: Mapped[Optional[BloodGroup]] = mapped_column(
-        sa_Enum(BloodGroup, name="bloodgroup"),
+        sa_Enum(BloodGroup, name="bloodgroup",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         default=None,
     )
     allergies: Mapped[Optional[str]] = mapped_column(Text, default=None)
@@ -380,7 +388,9 @@ class MemberDocument(Base, TimestampMixin):
         index=True,
     )
     document_type: Mapped[DocumentType] = mapped_column(
-        sa_Enum(DocumentType, name="documenttype"),
+        sa_Enum(DocumentType, name="documenttype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     file_key: Mapped[str] = mapped_column(Text, nullable=False)
@@ -456,7 +466,9 @@ class Membership(Base, AuditMixin):
     starts_on: Mapped[Date] = mapped_column(Date, nullable=False)
     ends_on: Mapped[Optional[Date]] = mapped_column(Date, default=None)
     status: Mapped[MembershipStatus] = mapped_column(
-        sa_Enum(MembershipStatus, name="membershipstatus"),
+        sa_Enum(MembershipStatus, name="membershipstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=MembershipStatus.ACTIVE,
     )

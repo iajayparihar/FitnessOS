@@ -58,7 +58,9 @@ class NotificationTemplate(Base, AuditMixin):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     channel: Mapped[NotificationChannel] = mapped_column(
-        sa_Enum(NotificationChannel, name="notificationchannel"),
+        sa_Enum(NotificationChannel, name="notificationchannel",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     subject_template: Mapped[Optional[str]] = mapped_column(Text, default=None)
@@ -115,11 +117,15 @@ class Notification(Base, AuditMixin):
         default=None,
     )
     channel: Mapped[NotificationChannel] = mapped_column(
-        sa_Enum(NotificationChannel, name="notificationchannel"),
+        sa_Enum(NotificationChannel, name="notificationchannel",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     recipient_type: Mapped[RecipientType] = mapped_column(
-        sa_Enum(RecipientType, name="recipienttype"),
+        sa_Enum(RecipientType, name="recipienttype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     recipient_id: Mapped[Optional[uuid.UUID]] = mapped_column(
@@ -128,7 +134,9 @@ class Notification(Base, AuditMixin):
     recipient_contact: Mapped[Optional[str]] = mapped_column(Text, default=None)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     status: Mapped[NotificationStatus] = mapped_column(
-        sa_Enum(NotificationStatus, name="notificationstatus"),
+        sa_Enum(NotificationStatus, name="notificationstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=NotificationStatus.PENDING,
     )
@@ -260,7 +268,9 @@ class NotificationPreference(Base, TimestampMixin):
         index=True,
     )
     recipient_type: Mapped[RecipientType] = mapped_column(
-        sa_Enum(RecipientType, name="recipienttype"),
+        sa_Enum(RecipientType, name="recipienttype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     recipient_id: Mapped[uuid.UUID] = mapped_column(
@@ -268,7 +278,9 @@ class NotificationPreference(Base, TimestampMixin):
         nullable=False,
     )
     channel: Mapped[NotificationChannel] = mapped_column(
-        sa_Enum(NotificationChannel, name="notificationchannel"),
+        sa_Enum(NotificationChannel, name="notificationchannel",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     template_code: Mapped[str] = mapped_column(Text, nullable=False)

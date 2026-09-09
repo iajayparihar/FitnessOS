@@ -199,7 +199,6 @@ class UserAuthMethod(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     provider: Mapped[AuthProvider] = mapped_column(
         sa_Enum(
@@ -264,7 +263,6 @@ class Session(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
@@ -316,7 +314,6 @@ class Invite(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     email: Mapped[str] = mapped_column(Text, nullable=False)
     invited_by: Mapped[Optional[uuid.UUID]] = mapped_column(

@@ -128,7 +128,9 @@ class Product(Base, AuditMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, default=None)
     category: Mapped[ProductCategory] = mapped_column(
-        sa_Enum(ProductCategory, name="productcategory"),
+        sa_Enum(ProductCategory, name="productcategory",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     unit_price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
@@ -306,7 +308,9 @@ class PurchaseOrder(Base, AuditMixin):
     )
     order_number: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[PurchaseOrderStatus] = mapped_column(
-        sa_Enum(PurchaseOrderStatus, name="purchaseorderstatus"),
+        sa_Enum(PurchaseOrderStatus, name="purchaseorderstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=PurchaseOrderStatus.DRAFT,
     )
@@ -439,7 +443,9 @@ class InventoryTransaction(Base):
         default=None,
     )
     transaction_type: Mapped[InventoryTransactionType] = mapped_column(
-        sa_Enum(InventoryTransactionType, name="inventorytransactiontype"),
+        sa_Enum(InventoryTransactionType, name="inventorytransactiontype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     quantity_change: Mapped[int] = mapped_column(Integer, nullable=False)

@@ -346,3 +346,53 @@ async def ensure_user_has_permission(
         permission_code=permission_code,
     ):
         raise PermissionDenied(permission_code)
+
+
+async def get_user_role_slugs(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+) -> list[str]:
+    """Return the active role slugs a user holds inside an organization."""
+    result = await db.execute(
+        select(Role.slug)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .where(
+            UserRole.user_id == user_id,
+            UserRole.organization_id == organization_id,
+            (Role.organization_id == organization_id) | (Role.is_system.is_(True)),
+            Role.is_active.is_(True),
+            Role.deleted_at.is_(None),
+        )
+        .distinct()
+        .order_by(Role.slug)
+    )
+    return list(result.scalars())
+
+
+async def get_user_permission_codes(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    organization_id: uuid.UUID,
+) -> list[str]:
+    """Return the permission codes a user is granted inside an organization."""
+    result = await db.execute(
+        select(Permission.code)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .join(Role, Role.id == RolePermission.role_id)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .where(
+            UserRole.user_id == user_id,
+            UserRole.organization_id == organization_id,
+            (Role.organization_id == organization_id) | (Role.is_system.is_(True)),
+            Permission.is_active.is_(True),
+            RolePermission.granted.is_(True),
+            Role.is_active.is_(True),
+            Role.deleted_at.is_(None),
+        )
+        .distinct()
+        .order_by(Permission.code)
+    )
+    return list(result.scalars())

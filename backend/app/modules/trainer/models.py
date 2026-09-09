@@ -162,7 +162,9 @@ class WorkoutTemplate(Base, AuditMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, default=None)
     difficulty: Mapped[WorkoutDifficulty] = mapped_column(
-        sa_Enum(WorkoutDifficulty, name="workoutdifficulty"),
+        sa_Enum(WorkoutDifficulty, name="workoutdifficulty",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     estimated_duration_minutes: Mapped[Optional[int]] = mapped_column(
@@ -230,7 +232,9 @@ class WorkoutAssignment(Base, AuditMixin):
     starts_on: Mapped[Date] = mapped_column(Date, nullable=False)
     ends_on: Mapped[Optional[Date]] = mapped_column(Date, default=None)
     status: Mapped[AssignmentStatus] = mapped_column(
-        sa_Enum(AssignmentStatus, name="assignmentstatus"),
+        sa_Enum(AssignmentStatus, name="assignmentstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=AssignmentStatus.ACTIVE,
     )

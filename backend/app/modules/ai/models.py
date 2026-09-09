@@ -57,7 +57,9 @@ class AIFeatureUsage(Base):
         index=True,
     )
     feature_type: Mapped[AIFeatureType] = mapped_column(
-        sa_Enum(AIFeatureType, name="aifeaturetype"),
+        sa_Enum(AIFeatureType, name="aifeaturetype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     model_code: Mapped[str] = mapped_column(Text, nullable=False)

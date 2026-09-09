@@ -110,7 +110,9 @@ class Coupon(Base, AuditMixin):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, default=None)
     discount_source: Mapped[DiscountSource] = mapped_column(
-        sa_Enum(DiscountSource, name="discountsource")
+        sa_Enum(DiscountSource, name="discountsource",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        )
     )
 
     discount_value_type: Mapped[DiscountValueType] = mapped_column(
@@ -208,7 +210,9 @@ class Invoice(Base, AuditMixin):
     )
     invoice_number: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[InvoiceStatus] = mapped_column(
-        sa_Enum(InvoiceStatus, name="invoicestatus"),
+        sa_Enum(InvoiceStatus, name="invoicestatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=InvoiceStatus.DRAFT,
     )
@@ -327,7 +331,6 @@ class InvoiceItem(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("invoices.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     description: Mapped[str] = mapped_column(Text, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -390,7 +393,6 @@ class Discount(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("invoices.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     coupon_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
@@ -398,7 +400,9 @@ class Discount(Base, TimestampMixin):
         default=None,
     )
     type: Mapped[DiscountValueType] = mapped_column(
-        sa_Enum(DiscountValueType, name="discountvaluetype"),
+        sa_Enum(DiscountValueType, name="discountvaluetype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -454,12 +458,16 @@ class Payment(Base, AuditMixin):
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR")
     status: Mapped[PaymentStatus] = mapped_column(
-        sa_Enum(PaymentStatus, name="paymentstatus"),
+        sa_Enum(PaymentStatus, name="paymentstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=PaymentStatus.PENDING,
     )
     payment_method: Mapped[PaymentMethod] = mapped_column(
-        sa_Enum(PaymentMethod, name="paymentmethod"),
+        sa_Enum(PaymentMethod, name="paymentmethod",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     gateway: Mapped[Optional[str]] = mapped_column(Text, default=None)
@@ -545,7 +553,9 @@ class Refund(Base, AuditMixin):
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[RefundStatus] = mapped_column(
-        sa_Enum(RefundStatus, name="refundstatus"),
+        sa_Enum(RefundStatus, name="refundstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=RefundStatus.PENDING,
     )

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.modules.analytics.router import router as analytics_router
 from app.modules.attendance.router import router as attendance_router
 from app.modules.auth.router import router as auth_router
@@ -58,8 +60,28 @@ def register_routes(app: FastAPI) -> None:
         app.include_router(router, prefix=f"{API_V1_PREFIX}{prefix}", tags=[tag])
 
 
+def register_cors(app: FastAPI) -> None:
+    """
+    Allow the Clerk-authenticated frontends declared as authorized parties.
+
+    The same origins are the ones accepted in the ``azp`` claim, so CORS and token
+    validation stay in agreement instead of drifting apart.
+    """
+    if not settings.clerk_authorized_parties:
+        return
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.clerk_authorized_parties,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Fitness Business OS API", version="0.1.0")
+    register_cors(app)
     register_routes(app)
     return app
 

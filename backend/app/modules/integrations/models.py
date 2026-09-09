@@ -118,7 +118,9 @@ class WebhookDelivery(Base):
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
     status: Mapped[WebhookDeliveryStatus] = mapped_column(
-        sa_Enum(WebhookDeliveryStatus, name="webhookdeliverystatus"),
+        sa_Enum(WebhookDeliveryStatus, name="webhookdeliverystatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=WebhookDeliveryStatus.PENDING,
     )

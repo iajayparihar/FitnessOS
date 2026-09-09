@@ -15,9 +15,19 @@ from app.core.security import (
     hash_secret,
     verify_password,
 )
-from app.modules.auth.exceptions import InactiveUser, InvalidCredentials
-from app.modules.auth.models import AuthProvider, Session, User, UserAuthMethod, UserProfile
-from app.modules.auth.schemas import LoginRequest, RegisterRequest
+from app.modules.auth.exceptions import (
+    AlreadyOnboarded,
+    InactiveUser,
+    InvalidCredentials,
+)
+from app.modules.auth.models import (
+    AuthProvider,
+    Session,
+    User,
+    UserAuthMethod,
+    UserProfile,
+)
+from app.modules.auth.schemas import LoginRequest, OnboardingRequest, RegisterRequest
 from app.modules.rbac.service import assign_role_to_user, ensure_owner_role
 from app.modules.tenants.models import Organization
 from app.modules.tenants.service import create_org, ensure_slug_available, make_slug
@@ -225,14 +235,58 @@ async def revoke_refresh_token(
         await db.commit()
 
 
-async def get_user_by_clerk_id(db: AsyncSession, *, clerk_user_id: str) -> User | None:
-    """Return the active, non-deleted FitnessOS user for a Clerk user id."""
-    result = await db.execute(
-        select(User)
-        .options(selectinload(User.organization))
-        .where(
-            User.clerk_user_id == clerk_user_id,
-            User.deleted_at.is_(None),
-        )
+async def onboard_clerk_user(
+    db: AsyncSession,
+    *,
+    user: User,
+    payload: OnboardingRequest,
+) -> tuple[User, Organization]:
+    """
+    Create the tenant for a Clerk-authenticated user and make them its owner.
+
+    This is the Clerk-era replacement for password registration: identity already
+    exists in Clerk, so this only provisions FitnessOS business state.
+    """
+    if user.organization_id is not None:
+        raise AlreadyOnboarded
+
+    slug = make_slug(payload.organization.slug or payload.organization.name)
+    await ensure_slug_available(db, slug=slug)
+    organization = await create_org(
+        db,
+        payload=payload.organization.model_copy(update={"slug": slug}),
+        created_by=user.id,
     )
-    return result.scalar_one_or_none()
+
+    user.organization_id = organization.id
+    await db.flush()
+
+    if payload.first_name or payload.last_name:
+        result = await db.execute(
+            select(UserProfile).where(UserProfile.user_id == user.id)
+        )
+        profile = result.scalar_one_or_none()
+        if profile is None:
+            db.add(
+                UserProfile(
+                    user_id=user.id,
+                    first_name=payload.first_name,
+                    last_name=payload.last_name,
+                )
+            )
+        else:
+            profile.first_name = payload.first_name or profile.first_name
+            profile.last_name = payload.last_name or profile.last_name
+
+    owner_role = await ensure_owner_role(db, organization_id=organization.id)
+    await assign_role_to_user(
+        db,
+        user_id=user.id,
+        role_id=owner_role.id,
+        organization_id=organization.id,
+        assigned_by=user.id,
+    )
+    await db.commit()
+    await db.refresh(user)
+    await db.refresh(organization)
+    return user, organization

@@ -110,7 +110,9 @@ class MealTemplate(Base, AuditMixin):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     meal_type: Mapped[MealType] = mapped_column(
-        sa_Enum(MealType, name="mealtype"),
+        sa_Enum(MealType, name="mealtype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     items: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -214,7 +216,9 @@ class NutritionLog(Base, TimestampMixin):
     )
     logged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     meal_type: Mapped[MealType] = mapped_column(
-        sa_Enum(MealType, name="mealtype"),
+        sa_Enum(MealType, name="mealtype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     items: Mapped[dict] = mapped_column(JSONB, nullable=False)

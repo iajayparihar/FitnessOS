@@ -78,7 +78,9 @@ class AttendanceDevice(Base, AuditMixin):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     device_type: Mapped[DeviceType] = mapped_column(
-        sa_Enum(DeviceType, name="devicetype"),
+        sa_Enum(DeviceType, name="devicetype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     identifier: Mapped[str] = mapped_column(Text, nullable=False)
@@ -151,11 +153,15 @@ class AttendanceRecord(Base):
         default=None,
     )
     type: Mapped[AttendanceType] = mapped_column(
-        sa_Enum(AttendanceType, name="attendancetype"),
+        sa_Enum(AttendanceType, name="attendancetype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     method: Mapped[CheckinMethod] = mapped_column(
-        sa_Enum(CheckinMethod, name="checkinmethod"),
+        sa_Enum(CheckinMethod, name="checkinmethod",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     recorded_at: Mapped[datetime] = mapped_column(

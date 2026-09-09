@@ -132,7 +132,9 @@ class Lead(Base, AuditMixin):
         default=None,
     )
     status: Mapped[LeadStatus] = mapped_column(
-        sa_Enum(LeadStatus, name="leadstatus"),
+        sa_Enum(LeadStatus, name="leadstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=LeadStatus.NEW,
     )
@@ -242,7 +244,9 @@ class LeadFollowUp(Base, AuditMixin):
         default=None,
     )
     type: Mapped[LeadFollowUpType] = mapped_column(
-        sa_Enum(LeadFollowUpType, name="leadfollowuptype"),
+        sa_Enum(LeadFollowUpType, name="leadfollowuptype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     scheduled_at: Mapped[datetime] = mapped_column(
@@ -315,7 +319,9 @@ class LeadActivity(Base, TimestampMixin):
         index=True,
     )
     kind: Mapped[ActivityKind] = mapped_column(
-        sa_Enum(ActivityKind, name="activitykind"),
+        sa_Enum(ActivityKind, name="activitykind",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     performed_by: Mapped[Optional[uuid.UUID]] = mapped_column(

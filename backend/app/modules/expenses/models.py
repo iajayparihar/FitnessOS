@@ -122,7 +122,9 @@ class Expense(Base, AuditMixin):
     vendor_name: Mapped[Optional[str]] = mapped_column(Text, default=None)
     receipt_file_key: Mapped[Optional[str]] = mapped_column(Text, default=None)
     payment_method: Mapped[PaymentMethod] = mapped_column(
-        sa_Enum(PaymentMethod, name="paymentmethod"),
+        sa_Enum(PaymentMethod, name="paymentmethod",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     approved_by: Mapped[Optional[uuid.UUID]] = mapped_column(
@@ -174,13 +176,17 @@ class PayrollEmployee(Base, AuditMixin):
         unique=True,
     )
     employment_type: Mapped[EmploymentType] = mapped_column(
-        sa_Enum(EmploymentType, name="employmenttype"),
+        sa_Enum(EmploymentType, name="employmenttype",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     designation: Mapped[Optional[str]] = mapped_column(Text, default=None)
     salary_cents: Mapped[Optional[int]] = mapped_column(BigInteger, default=None)
     pay_schedule: Mapped[PaySchedule] = mapped_column(
-        sa_Enum(PaySchedule, name="payschedule"),
+        sa_Enum(PaySchedule, name="payschedule",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=PaySchedule.MONTHLY,
     )
@@ -231,7 +237,9 @@ class PayrollRun(Base, AuditMixin):
     period_start: Mapped[Date] = mapped_column(Date, nullable=False)
     period_end: Mapped[Date] = mapped_column(Date, nullable=False)
     status: Mapped[PayrollRunStatus] = mapped_column(
-        sa_Enum(PayrollRunStatus, name="payrollrunstatus"),
+        sa_Enum(PayrollRunStatus, name="payrollrunstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=PayrollRunStatus.DRAFT,
     )

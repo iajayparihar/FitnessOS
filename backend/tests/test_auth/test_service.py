@@ -14,13 +14,14 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.integrations.clerk.client import ClerkClient
-from app.integrations.clerk.exceptions import ClerkAuthenticationError, ClerkConfigurationError
 from app.modules.auth.dependencies import get_current_user
 
 
 @pytest.fixture(autouse=True)
 def configure_runtime_settings(monkeypatch):
+    # These tests cover the legacy password/session path, which only runs while
+    # the migration flag is on. Clerk is the default authority everywhere else.
+    monkeypatch.setattr(settings, "legacy_password_auth_enabled", True)
     monkeypatch.setattr(settings, "jwt_secret_key", "test-secret-key-for-auth-tests")
     monkeypatch.setattr(settings, "clerk_jwt_key", None)
     monkeypatch.setattr(settings, "clerk_jwks_url", None)
@@ -81,7 +82,7 @@ def test_decode_jwt_rejects_expired_token_with_specific_error():
         decode_jwt(token)
 
 
-def test_get_current_user_reports_expired_access_token():
+def test_get_current_user_reports_expired_legacy_access_token():
     token = encode_jwt(
         {
             "sub": uuid.uuid4(),
@@ -112,22 +113,3 @@ def test_create_access_token_requires_configured_secret(monkeypatch):
             is_superuser=False,
             session_id=uuid.uuid4(),
         )
-
-
-def test_clerk_client_requires_configured_authorized_parties(monkeypatch):
-    monkeypatch.setattr(settings, "clerk_issuer", "https://example.clerk.accounts.dev")
-    monkeypatch.setattr(settings, "clerk_authorized_parties", [])
-    monkeypatch.setattr(settings, "clerk_jwks_url", None)
-    monkeypatch.setattr(settings, "clerk_jwt_key", None)
-
-    with pytest.raises(ClerkConfigurationError, match="authorized parties"):
-        ClerkClient().verify_session_token("token")
-
-
-def test_clerk_client_rejects_malformed_token(monkeypatch):
-    monkeypatch.setattr(settings, "clerk_issuer", "https://example.clerk.accounts.dev")
-    monkeypatch.setattr(settings, "clerk_authorized_parties", ["https://example.com"])
-    monkeypatch.setattr(settings, "clerk_jwt_key", "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArandomvalue\n-----END PUBLIC KEY-----")
-
-    with pytest.raises(ClerkAuthenticationError, match="Invalid Clerk token"):
-        ClerkClient().verify_session_token("not-a-valid-jwt")

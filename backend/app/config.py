@@ -1,7 +1,9 @@
 """This module contains the configuration settings for the application."""
 
+from typing import Annotated
+
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -12,16 +14,32 @@ class Settings(BaseSettings):
 
     database_url: str
     echo: bool = False
+
+    # Legacy password/session authentication. Clerk is the authentication
+    # authority; this flag only exists to keep a migration escape hatch open and
+    # defaults to off so the legacy path cannot be reached accidentally.
+    legacy_password_auth_enabled: bool = False
     jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 30
+
     clerk_secret_key: str = ""
     clerk_publishable_key: str = ""
     clerk_jwks_url: str | None = None
     clerk_jwt_key: str | None = None
     clerk_issuer: str | None = None
-    clerk_authorized_parties: list[str] = Field(default_factory=list)
+    # NoDecode keeps pydantic-settings from JSON-parsing the environment value,
+    # so the documented comma-separated form reaches the validator below.
+    clerk_authorized_parties: Annotated[list[str], NoDecode] = Field(
+        default_factory=list
+    )
+    clerk_jwt_leeway_seconds: int = 5
+    # Controlled one-way migration switch: link a first-time Clerk identity to an
+    # existing local user that shares its verified email address. Off by default
+    # because email is not a trustworthy permanent identity key.
+    clerk_link_existing_users_by_email: bool = False
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
@@ -31,7 +49,11 @@ class Settings(BaseSettings):
     @classmethod
     def parse_debug(cls, value):
         """Accept common environment labels for local debug configuration."""
-        if isinstance(value, str) and value.lower() in {"release", "prod", "production"}:
+        if isinstance(value, str) and value.lower() in {
+            "release",
+            "prod",
+            "production",
+        }:
             return False
         return value
 

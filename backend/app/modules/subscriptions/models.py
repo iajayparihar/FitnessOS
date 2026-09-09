@@ -55,7 +55,9 @@ class SubscriptionPlan(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, default=None)
     billing_cycle: Mapped[BillingCycle] = mapped_column(
-        sa_Enum(BillingCycle, name="billingcycle"),
+        sa_Enum(BillingCycle, name="billingcycle",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
     )
     price_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -142,7 +144,9 @@ class TenantSubscription(Base, AuditMixin):
         nullable=False,
     )
     status: Mapped[SubscriptionStatus] = mapped_column(
-        sa_Enum(SubscriptionStatus, name="subscriptionstatus"),
+        sa_Enum(SubscriptionStatus, name="subscriptionstatus",
+            values_callable=lambda enum_cls: [item.value for item in enum_cls],
+        ),
         nullable=False,
         default=SubscriptionStatus.TRIALING,
     )

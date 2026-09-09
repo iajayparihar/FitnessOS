@@ -30,7 +30,8 @@ from app.modules.auth.models import (
 from app.modules.auth.schemas import LoginRequest, OnboardingRequest, RegisterRequest
 from app.modules.rbac.service import assign_role_to_user, ensure_owner_role
 from app.modules.tenants.models import Organization
-from app.modules.tenants.service import create_org, ensure_slug_available, make_slug
+from app.modules.tenants.schemas import OrgProvisionRequest
+from app.modules.tenants.service import provision_organization
 
 
 async def get_user_by_id(db: AsyncSession, *, user_id: uuid.UUID) -> User | None:
@@ -48,14 +49,14 @@ async def register_owner(
     *,
     payload: RegisterRequest,
 ) -> tuple[User, Organization, str, str]:
-    """Create an organization and its first owner user."""
-    slug = make_slug(payload.organization.slug or payload.organization.name)
-    await ensure_slug_available(db, slug=slug)
-    organization_payload = payload.organization.model_copy(update={"slug": slug})
-    organization = await create_org(db, payload=organization_payload)
+    """
+    Create an organization and its first owner user (legacy password flow).
 
+    Reachable only while LEGACY_PASSWORD_AUTH_ENABLED is set. Tenant creation is
+    delegated to the shared provisioning service so this path produces exactly
+    the same fully-initialised organization as Clerk onboarding.
+    """
     user = User(
-        organization_id=organization.id,
         email=payload.email.strip().lower(),
         email_verified=False,
         is_active=True,
@@ -76,17 +77,13 @@ async def register_owner(
 
     db.add(user)
     await db.flush()
-    organization.created_by = user.id
-    organization.updated_by = user.id
 
-    owner_role = await ensure_owner_role(db, organization_id=organization.id)
-    await assign_role_to_user(
+    organization, _, _ = await provision_organization(
         db,
-        user_id=user.id,
-        role_id=owner_role.id,
-        organization_id=organization.id,
-        assigned_by=user.id,
+        user=user,
+        payload=OrgProvisionRequest(**payload.organization.model_dump()),
     )
+
     access_token, refresh_token = await create_session_tokens(db, user=user)
     await db.commit()
     await db.refresh(user)
@@ -244,22 +241,12 @@ async def onboard_clerk_user(
     """
     Create the tenant for a Clerk-authenticated user and make them its owner.
 
-    This is the Clerk-era replacement for password registration: identity already
-    exists in Clerk, so this only provisions FitnessOS business state.
+    Delegates to the tenant module's provisioning service so onboarding and
+    ``POST /api/v1/organizations`` share one atomic creation path rather than
+    drifting into two partial implementations.
     """
     if user.organization_id is not None:
         raise AlreadyOnboarded
-
-    slug = make_slug(payload.organization.slug or payload.organization.name)
-    await ensure_slug_available(db, slug=slug)
-    organization = await create_org(
-        db,
-        payload=payload.organization.model_copy(update={"slug": slug}),
-        created_by=user.id,
-    )
-
-    user.organization_id = organization.id
-    await db.flush()
 
     if payload.first_name or payload.last_name:
         result = await db.execute(
@@ -278,15 +265,10 @@ async def onboard_clerk_user(
             profile.first_name = payload.first_name or profile.first_name
             profile.last_name = payload.last_name or profile.last_name
 
-    owner_role = await ensure_owner_role(db, organization_id=organization.id)
-    await assign_role_to_user(
+    organization, _, _ = await provision_organization(
         db,
-        user_id=user.id,
-        role_id=owner_role.id,
-        organization_id=organization.id,
-        assigned_by=user.id,
+        user=user,
+        payload=OrgProvisionRequest(**payload.organization.model_dump()),
     )
-    await db.commit()
     await db.refresh(user)
-    await db.refresh(organization)
     return user, organization

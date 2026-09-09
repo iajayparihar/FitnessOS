@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,20 +18,205 @@ from app.modules.rbac.exceptions import (
 )
 from app.modules.rbac.models import Permission, Role, RolePermission, UserRole
 from app.modules.rbac.schemas import RoleCreate
-from app.modules.tenants.models import OrganizationBranch
+from app.modules.tenants.models import OrganizationBranch, OrganizationMembership
 
 DEFAULT_PERMISSIONS: tuple[tuple[str, str, str], ...] = (
     ("tenants:read", "Read current organization information.", "tenants"),
-    ("tenants:manage", "Manage organization settings.", "tenants"),
-    ("users:read", "Read organization users.", "users"),
-    ("users:manage", "Manage organization users.", "users"),
+    ("tenants:manage", "Manage organization settings and lifecycle.", "tenants"),
+    ("branches:read", "Read organization branches.", "tenants"),
+    ("branches:manage", "Create, update and remove branches.", "tenants"),
+    ("users:read", "Read organization users and memberships.", "users"),
+    ("users:manage", "Add, update and remove organization members.", "users"),
     ("rbac:read", "Read roles and permissions.", "rbac"),
     ("rbac:manage", "Create roles and assign permissions.", "rbac"),
+    ("crm:read", "Read leads and CRM activity.", "crm"),
     ("crm:manage", "Manage CRM data.", "crm"),
+    ("membership:read", "Read members, plans and memberships.", "membership"),
     ("membership:manage", "Manage members and memberships.", "membership"),
+    ("attendance:read", "Read attendance records.", "attendance"),
     ("attendance:manage", "Manage attendance.", "attendance"),
+    ("billing:read", "Read invoices, payments and refunds.", "billing"),
     ("billing:manage", "Manage invoices and payments.", "billing"),
+    ("trainer:read", "Read trainer profiles and schedules.", "trainer"),
+    ("trainer:manage", "Manage trainers, schedules and sessions.", "trainer"),
+    ("nutrition:read", "Read nutrition plans.", "nutrition"),
+    ("nutrition:manage", "Manage nutrition plans and assignments.", "nutrition"),
+    ("inventory:read", "Read products, stock and suppliers.", "inventory"),
+    ("inventory:manage", "Manage products, stock and purchase orders.", "inventory"),
+    ("expenses:read", "Read expenses and payroll.", "expenses"),
+    ("expenses:manage", "Manage expenses and payroll.", "expenses"),
+    ("notifications:read", "Read notification history.", "notifications"),
+    ("notifications:manage", "Send and configure notifications.", "notifications"),
+    (
+        "subscriptions:read",
+        "Read the organization's platform subscription.",
+        "subscriptions",
+    ),
+    (
+        "subscriptions:manage",
+        "Manage the organization's platform subscription.",
+        "subscriptions",
+    ),
+    ("analytics:read", "Read dashboards and reports.", "analytics"),
 )
+
+ALL_PERMISSION_CODES: tuple[str, ...] = tuple(
+    code for code, _, _ in DEFAULT_PERMISSIONS
+)
+
+
+@dataclass(frozen=True)
+class SystemRoleDefinition:
+    """A platform-defined role available to every organization."""
+
+    slug: str
+    name: str
+    description: str
+    permission_codes: tuple[str, ...]
+
+
+# The catalogue below is deliberately global rather than copied per tenant: one
+# row per role serves every organization, and a permission change reaches all of
+# them without a data migration. Assignments are what carry the tenant, through
+# ``user_roles.organization_id``.
+#
+# Two escalation guards shape these sets:
+#   * only OWNER holds rbac:manage — anyone who can edit roles can grant
+#     themselves any permission, so that is equivalent to ownership;
+#   * only OWNER holds tenants:manage and subscriptions:manage, which cover
+#     archiving the organization and changing what it pays for.
+#
+# MEMBER is intentionally near-empty. Permissions here are organization-wide, so
+# granting a gym-goer membership:read would expose the entire member list.
+# Self-service needs object-level scoping, which this system does not yet have.
+SYSTEM_ROLE_DEFINITIONS: tuple[SystemRoleDefinition, ...] = (
+    SystemRoleDefinition(
+        slug="owner",
+        name="Owner",
+        description="Full control of the organization, including roles and billing.",
+        permission_codes=ALL_PERMISSION_CODES,
+    ),
+    SystemRoleDefinition(
+        slug="admin",
+        name="Admin",
+        description=(
+            "Runs the business day to day. Everything except role management, "
+            "organization lifecycle and platform subscription."
+        ),
+        permission_codes=(
+            "tenants:read",
+            "branches:read",
+            "branches:manage",
+            "users:read",
+            "users:manage",
+            "rbac:read",
+            "crm:read",
+            "crm:manage",
+            "membership:read",
+            "membership:manage",
+            "attendance:read",
+            "attendance:manage",
+            "billing:read",
+            "billing:manage",
+            "trainer:read",
+            "trainer:manage",
+            "nutrition:read",
+            "nutrition:manage",
+            "inventory:read",
+            "inventory:manage",
+            "expenses:read",
+            "expenses:manage",
+            "notifications:read",
+            "notifications:manage",
+            "subscriptions:read",
+            "analytics:read",
+        ),
+    ),
+    SystemRoleDefinition(
+        slug="manager",
+        name="Manager",
+        description=(
+            "Runs floor operations. Full member, trainer and inventory control; "
+            "financial data is read-only."
+        ),
+        permission_codes=(
+            "tenants:read",
+            "branches:read",
+            "users:read",
+            "crm:read",
+            "crm:manage",
+            "membership:read",
+            "membership:manage",
+            "attendance:read",
+            "attendance:manage",
+            "billing:read",
+            "trainer:read",
+            "trainer:manage",
+            "nutrition:read",
+            "nutrition:manage",
+            "inventory:read",
+            "inventory:manage",
+            "expenses:read",
+            "notifications:read",
+            "notifications:manage",
+            "analytics:read",
+        ),
+    ),
+    SystemRoleDefinition(
+        slug="trainer",
+        name="Trainer",
+        description=(
+            "Coaches members: marks attendance and manages training and nutrition "
+            "plans. No access to money or staff administration."
+        ),
+        permission_codes=(
+            "tenants:read",
+            "branches:read",
+            "crm:read",
+            "membership:read",
+            "attendance:read",
+            "attendance:manage",
+            "trainer:read",
+            "nutrition:read",
+            "nutrition:manage",
+        ),
+    ),
+    SystemRoleDefinition(
+        slug="staff",
+        name="Staff",
+        description=(
+            "Front desk: registers members, captures leads and records check-ins. "
+            "Billing is read-only."
+        ),
+        permission_codes=(
+            "tenants:read",
+            "branches:read",
+            "crm:read",
+            "crm:manage",
+            "membership:read",
+            "membership:manage",
+            "attendance:read",
+            "attendance:manage",
+            "billing:read",
+            "trainer:read",
+            "inventory:read",
+            "notifications:read",
+        ),
+    ),
+    SystemRoleDefinition(
+        slug="member",
+        name="Member",
+        description=(
+            "A gym-goer. Holds no organization-wide read access; self-service "
+            "requires object-level scoping that does not exist yet."
+        ),
+        permission_codes=("tenants:read",),
+    ),
+)
+
+SYSTEM_ROLE_BY_SLUG: dict[str, SystemRoleDefinition] = {
+    definition.slug: definition for definition in SYSTEM_ROLE_DEFINITIONS
+}
 
 
 def make_slug(value: str) -> str:
@@ -159,7 +345,9 @@ async def create_role(
         permission_codes=payload.permission_codes,
     )
     for permission in permissions:
-        db.add(RolePermission(role_id=role.id, permission_id=permission.id, granted=True))
+        db.add(
+            RolePermission(role_id=role.id, permission_id=permission.id, granted=True)
+        )
 
     await log_audit_event(
         db,
@@ -184,47 +372,129 @@ async def create_role(
     return role
 
 
-async def ensure_owner_role(
-    db: AsyncSession,
-    *,
-    organization_id: uuid.UUID,
-) -> Role:
-    """Create or return the tenant owner role with all default permissions."""
+async def seed_system_roles(db: AsyncSession) -> dict[str, Role]:
+    """
+    Create or refresh the platform's system roles and their permissions.
+
+    Idempotent, and safe to call repeatedly: roles are matched by slug, missing
+    permissions are granted, and permissions no longer in a role's definition are
+    revoked so the catalogue in code stays the single source of truth.
+
+    System roles carry ``organization_id IS NULL``. There is one row per role for
+    the whole platform rather than a copy per tenant, so adding a permission to
+    Manager reaches every organization without a data migration. The tenant lives
+    on the assignment (``user_roles.organization_id``), not on the role.
+    """
     permissions = await seed_default_permissions(db)
+    permission_by_code = {permission.code: permission for permission in permissions}
+
     result = await db.execute(
         select(Role).where(
-            Role.organization_id == organization_id,
-            func.lower(Role.slug) == "owner",
-            Role.deleted_at.is_(None),
+            Role.organization_id.is_(None),
+            Role.is_system.is_(True),
+        )
+    )
+    role_by_slug = {role.slug: role for role in result.scalars()}
+
+    roles: dict[str, Role] = {}
+    for definition in SYSTEM_ROLE_DEFINITIONS:
+        role = role_by_slug.get(definition.slug)
+        if role is None:
+            role = Role(
+                organization_id=None,
+                name=definition.name,
+                slug=definition.slug,
+                description=definition.description,
+                is_system=True,
+                is_active=True,
+            )
+            db.add(role)
+            await db.flush()
+        else:
+            role.name = definition.name
+            role.description = definition.description
+            role.is_active = True
+
+        await _sync_role_permissions(
+            db,
+            role=role,
+            permission_codes=definition.permission_codes,
+            permission_by_code=permission_by_code,
+        )
+        roles[definition.slug] = role
+
+    await db.flush()
+    return roles
+
+
+async def _sync_role_permissions(
+    db: AsyncSession,
+    *,
+    role: Role,
+    permission_codes: tuple[str, ...],
+    permission_by_code: dict[str, Permission],
+) -> None:
+    """Make a role's granted permissions match its definition exactly."""
+    wanted_ids = {
+        permission_by_code[code].id
+        for code in permission_codes
+        if code in permission_by_code
+    }
+
+    result = await db.execute(
+        select(RolePermission).where(RolePermission.role_id == role.id)
+    )
+    existing = {row.permission_id: row for row in result.scalars()}
+
+    for permission_id in wanted_ids - set(existing):
+        db.add(
+            RolePermission(
+                role_id=role.id,
+                permission_id=permission_id,
+                granted=True,
+            )
+        )
+    for permission_id, row in existing.items():
+        if permission_id not in wanted_ids:
+            await db.delete(row)
+        elif not row.granted:
+            row.granted = True
+
+
+async def get_system_role(db: AsyncSession, *, slug: str) -> Role | None:
+    """Return one system role by slug, seeding the catalogue if it is absent."""
+    if slug not in SYSTEM_ROLE_BY_SLUG:
+        return None
+
+    result = await db.execute(
+        select(Role).where(
+            Role.organization_id.is_(None),
+            Role.is_system.is_(True),
+            func.lower(Role.slug) == slug.lower(),
         )
     )
     role = result.scalar_one_or_none()
-    if role is None:
-        role = Role(
-            organization_id=organization_id,
-            name="Owner",
-            slug="owner",
-            description="Full organization owner access.",
-            is_system=False,
-            is_active=True,
-        )
-        db.add(role)
-        await db.flush()
+    if role is not None:
+        return role
 
-    result = await db.execute(
-        select(RolePermission.permission_id).where(RolePermission.role_id == role.id)
-    )
-    existing_permission_ids = set(result.scalars())
-    for permission in permissions:
-        if permission.id not in existing_permission_ids:
-            db.add(
-                RolePermission(
-                    role_id=role.id,
-                    permission_id=permission.id,
-                    granted=True,
-                )
-            )
+    return (await seed_system_roles(db)).get(slug)
 
+
+async def ensure_owner_role(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID | None = None,
+) -> Role:
+    """
+    Return the platform's owner role.
+
+    Kept under its original name for existing callers. It no longer creates a
+    per-organization copy: ``organization_id`` is accepted and ignored, because
+    the owner role is now one shared system role scoped by the assignment.
+    """
+    role = await get_system_role(db, slug="owner")
+    if role is None:  # pragma: no cover - the catalogue always defines owner.
+        raise RoleNotFound
     return role
 
 
@@ -239,10 +509,17 @@ async def assign_role_to_user(
 ) -> UserRole:
     """Assign a role to a user within an organization."""
     await get_role_by_id(db, role_id=role_id, organization_id=organization_id)
+    # Membership is the authority on who belongs to a tenant. users.
+    # organization_id only records which organization the user is currently
+    # working in, so a user may hold roles in an organization that is not their
+    # active one.
     result = await db.execute(
-        select(User.id).where(
-            User.id == user_id,
-            User.organization_id == organization_id,
+        select(OrganizationMembership.id)
+        .join(User, User.id == OrganizationMembership.user_id)
+        .where(
+            OrganizationMembership.user_id == user_id,
+            OrganizationMembership.organization_id == organization_id,
+            OrganizationMembership.deleted_at.is_(None),
             User.deleted_at.is_(None),
         )
     )

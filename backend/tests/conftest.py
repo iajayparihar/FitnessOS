@@ -245,14 +245,31 @@ async def _truncate_all(engine) -> None:
         )
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def reset_database(request):
+    """
+    Empty the test schema after every test.
+
+    Truncation is autouse, so it is torn down last — after every session-holding
+    fixture has closed. Doing it inside those fixtures instead deadlocks: TRUNCATE
+    takes an exclusive lock, and a sibling fixture whose session is still
+    idle-in-transaction holds a conflicting one.
+    """
+    yield
+    if "db_engine" not in request.fixturenames:
+        return
+    await _truncate_all(request.getfixturevalue("db_engine"))
+
+
 @pytest_asyncio.fixture
 async def db_session(db_engine):
-    """Yield a session against an empty schema, truncating every table afterwards."""
+    """Yield a session against an empty schema."""
     session_maker = async_sessionmaker(db_engine, expire_on_commit=False)
     async with session_maker() as session:
-        yield session
-
-    await _truncate_all(db_engine)
+        try:
+            yield session
+        finally:
+            await session.rollback()
 
 
 @pytest_asyncio.fixture
@@ -272,4 +289,3 @@ async def api_client(db_engine, clerk_settings):
         yield http
 
     app.dependency_overrides.clear()
-    await _truncate_all(db_engine)

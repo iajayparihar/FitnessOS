@@ -25,12 +25,18 @@ from app.modules.rbac.service import (
     create_role,
     list_permissions,
     list_roles,
+    seed_system_roles,
 )
 
 router = APIRouter()
 
 
-@router.get("/permissions", response_model=PermissionListEnvelope)
+@router.get(
+    "/permissions",
+    response_model=PermissionListEnvelope,
+    summary="List permissions",
+    description="The full permission catalogue that roles are built from.",
+)
 async def get_permissions(
     _: User = Depends(require_permission("rbac:read")),
     db: AsyncSession = Depends(get_db),
@@ -40,12 +46,24 @@ async def get_permissions(
     return PermissionListEnvelope(data=permissions)
 
 
-@router.get("/roles", response_model=RoleListEnvelope)
+@router.get(
+    "/roles",
+    response_model=RoleListEnvelope,
+    summary="List roles",
+    description=(
+        "Returns the platform's system roles (owner, admin, manager, trainer, "
+        "staff, member) alongside any custom roles the organization has created. "
+        "System roles are shared across tenants and cannot be edited; create a "
+        "custom role to grant a different permission set."
+    ),
+)
 async def get_roles(
     current_user: User = Depends(require_permission("rbac:read")),
     db: AsyncSession = Depends(get_db),
 ) -> RoleListEnvelope:
     """List roles visible to the current organization."""
+    await seed_system_roles(db)
+    await db.commit()
     roles = await list_roles(db, organization_id=current_user.organization_id)
     return RoleListEnvelope(data=roles)
 

@@ -16,7 +16,8 @@ from app.modules.notifications.router import router as notifications_router
 from app.modules.nutrition.router import router as nutrition_router
 from app.modules.rbac.router import router as rbac_router
 from app.modules.subscriptions.router import router as subscriptions_router
-from app.modules.tenants.router import router as tenants_router
+from app.modules.tenants.router import legacy_router as tenants_legacy_router
+from app.modules.tenants.router import router as organizations_router
 from app.modules.trainer.router import router as trainer_router
 
 API_V1_PREFIX = "/api/v1"
@@ -36,7 +37,8 @@ MODULE_ROUTERS: tuple[tuple[str, APIRouter, str], ...] = (
     ("nutrition", nutrition_router, "/nutrition"),
     ("rbac", rbac_router, "/rbac"),
     ("subscriptions", subscriptions_router, "/subscriptions"),
-    ("tenants", tenants_router, "/tenants"),
+    ("organizations", organizations_router, "/organizations"),
+    ("tenants", tenants_legacy_router, "/tenants"),
     ("trainer", trainer_router, "/trainer"),
 )
 

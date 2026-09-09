@@ -5,33 +5,24 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import (
-    String,
     Boolean,
-    Integer,
-    BigInteger,
-    Text,
-    Date,
     DateTime,
-    Numeric,
-    SmallInteger,
     ForeignKey,
-    UniqueConstraint,
-    CheckConstraint,
     Index,
+    Text,
+    UniqueConstraint,
     func,
-    Enum as sa_Enum,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY, INET
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base
 from app.core.mixins import (
-    TimestampMixin,
     AuditMixin,
-    TenantScopedMixin,
     SoftDeleteMixin,
+    TimestampMixin,
 )
+from app.db.base import Base
 
 # RLS POLICY — roles: organization_id = current OR is_system = true
 # RLS POLICY — user_roles, api_keys: organization_id = current
@@ -94,9 +85,7 @@ class Permission(Base, TimestampMixin):
     category: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    __table_args__ = (
-        Index("ix_permissions_code", "code"),
-    )
+    __table_args__ = (Index("ix_permissions_code", "code"),)
 
     def __repr__(self) -> str:
         return f"<Permission(id={self.id}, code={self.code!r}, category={self.category!r})>"
@@ -124,9 +113,7 @@ class RolePermission(Base):
         nullable=False,
     )
 
-    __table_args__ = (
-        Index("ix_role_permissions_permission_id", "permission_id"),
-    )
+    __table_args__ = (Index("ix_role_permissions_permission_id", "permission_id"),)
 
     def __repr__(self) -> str:
         return (

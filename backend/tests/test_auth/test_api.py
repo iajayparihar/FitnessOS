@@ -5,12 +5,14 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
+from app.core.enums import OrganizationMemberRole, OrganizationMemberStatus
 from app.modules.auth.models import User
 from app.modules.rbac.schemas import RoleCreate
 from app.modules.rbac.service import (
     assign_role_to_user,
     create_role,
 )
+from app.modules.tenants.models import OrganizationMembership
 
 
 def auth_header(token: str) -> dict[str, str]:
@@ -149,8 +151,9 @@ async def test_onboarding_requires_authentication(api_client):
     assert response.status_code == 401
 
 
-async def test_onboarding_rejects_a_duplicate_slug(api_client, make_clerk_token):
-    await onboard(api_client, make_clerk_token(subject="user_a"), "Shared Name")
+async def test_onboarding_suffixes_a_duplicate_slug(api_client, make_clerk_token):
+    """Two gyms may share a name; the slug is what has to stay unique."""
+    first = await onboard(api_client, make_clerk_token(subject="user_a"), "Shared Name")
 
     response = await api_client.post(
         "/api/v1/auth/onboarding",
@@ -158,7 +161,9 @@ async def test_onboarding_rejects_a_duplicate_slug(api_client, make_clerk_token)
         headers=auth_header(make_clerk_token(subject="user_b")),
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 201
+    assert first["organization"]["slug"] == "shared-name"
+    assert response.json()["data"]["organization"]["slug"] == "shared-name-2"
 
 
 async def test_organization_creation_requires_authentication(api_client):
@@ -276,11 +281,18 @@ async def test_a_role_from_another_tenant_cannot_be_assigned(
 async def test_a_user_without_a_tenant_is_denied_permissions(
     api_client, make_clerk_token
 ):
+    """
+    Permission checks now resolve the tenant first.
+
+    A user with no organization has no tenant to be checked against, so the
+    request is refused as "not found" rather than reaching a permission check.
+    """
     token = make_clerk_token(subject="user_no_org")
 
     response = await api_client.get("/api/v1/rbac/roles", headers=auth_header(token))
 
-    assert response.status_code == 403
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Organization not found."
 
 
 async def test_owner_is_granted_managed_permissions(api_client, make_clerk_token):
@@ -309,6 +321,15 @@ async def test_a_role_without_the_permission_is_denied(
     )
     staff = result.scalar_one()
     staff.organization_id = uuid.UUID(organization_id)
+    # A membership is required: the active-tenant pointer alone confers no access.
+    db_session.add(
+        OrganizationMembership(
+            organization_id=uuid.UUID(organization_id),
+            user_id=staff.id,
+            role=OrganizationMemberRole.STAFF,
+            status=OrganizationMemberStatus.ACTIVE,
+        )
+    )
     await db_session.commit()
 
     role = await create_role(

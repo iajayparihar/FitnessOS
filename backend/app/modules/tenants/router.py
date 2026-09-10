@@ -27,6 +27,8 @@ from app.modules.tenants.exceptions import (
     MainBranchRequired,
     MembershipNotFound,
     OrgNotFound,
+    OwnerSeatRequiresOwner,
+    SelfRoleChangeNotAllowed,
     SlugUnavailable,
     UserNotFound,
 )
@@ -287,6 +289,7 @@ async def get_members(
     status_code=status.HTTP_201_CREATED,
     summary="Add a member to the organization",
     responses={
+        403: {"description": "Only an owner may grant the owner seat."},
         404: {"description": "User not found."},
         409: {"description": "User is already a member."},
     },
@@ -309,6 +312,11 @@ async def post_member(
         raise _not_found("User not found.") from exc
     except DuplicateMembership as exc:
         raise _conflict("User is already a member of this organization.") from exc
+    except OwnerSeatRequiresOwner as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only an existing owner can grant the owner seat.",
+        ) from exc
     except IntegrityError as exc:
         await db.rollback()
         raise _conflict("User is already a member of this organization.") from exc
@@ -319,7 +327,15 @@ async def post_member(
     "/{organization_id}/members/{user_id}",
     response_model=MembershipEnvelope,
     summary="Update a member's seat or status",
+    description=(
+        "An actor may never change their own role through this endpoint, and "
+        "granting or revoking the owner seat requires the actor to already be "
+        "an owner."
+    ),
     responses={
+        403: {
+            "description": ("Self role change, or a non-owner touching the owner seat.")
+        },
         404: {"description": "Membership not found in this organization."},
         409: {"description": "The organization would be left without an owner."},
     },
@@ -341,6 +357,16 @@ async def patch_member(
         )
     except MembershipNotFound as exc:
         raise _not_found("Member not found.") from exc
+    except SelfRoleChangeNotAllowed as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot change your own role.",
+        ) from exc
+    except OwnerSeatRequiresOwner as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only an existing owner can grant or revoke the owner seat.",
+        ) from exc
     except LastOwnerRemoval as exc:
         raise _conflict("An organization must keep at least one owner.") from exc
     return MembershipEnvelope(data=membership)

@@ -54,6 +54,31 @@ Super Admin (platform) · Gym Owner · Manager · Receptionist · Trainer · Nut
 - Permission checks are implemented as FastAPI dependencies (`Depends(require_permission("members:write"))`), never inline `if` checks scattered through business logic.
 - Frontend UI hides/disables actions the user lacks permission for, but this is **UX only** — the backend is the actual enforcement point, always.
 
+### Implemented: system role catalogue
+
+The role/permission foundation above is implemented as six global system roles
+(`owner`, `admin`, `manager`, `trainer`, `staff`, `member`) plus per-organization
+custom roles; see `TENANCY.md` for the full permission-code catalogue and the
+`resource:action` naming convention (matches this document's example matrix).
+
+### Privilege escalation controls (role assignment)
+
+- No actor may change their own membership role, unconditionally — an admin
+  cannot edit their own row to promote themselves, even if they hold
+  `users:manage`.
+- Granting, revoking, or otherwise touching a membership that holds the
+  `owner` seat (role or status) requires the actor to already hold the owner
+  seat. This is what stops `users:manage` (Admin) from minting or deposing
+  owners.
+- A role assigned to a user must resolve under the caller's own organization —
+  a role id belonging to another tenant's custom role, or a target user with no
+  membership in the caller's organization, both fail the same way a
+  nonexistent role or user would (no information is leaked about the other
+  tenant's role catalogue).
+- These are service-layer invariants (`app/modules/tenants/service.py`,
+  `app/modules/rbac/service.py`), not route-level checks, so they hold no
+  matter which endpoint or future caller reaches them.
+
 ---
 
 ## 4. Multi-Tenant Isolation

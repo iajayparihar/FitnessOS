@@ -144,9 +144,16 @@ async def test_the_last_owner_cannot_be_removed(
     assert "owner" in response.json()["detail"].lower()
 
 
-async def test_the_last_owner_cannot_be_demoted(
+async def test_the_sole_owner_cannot_self_demote(
     api_client, make_clerk_token, db_session
 ):
+    """
+    Self-role-change is blocked before the last-owner check ever runs.
+
+    An owner demoting themselves is simultaneously a self-role-change and a
+    last-owner removal; self-role-change is the stronger, unconditional rule and
+    fires first, so this is 403 rather than the 409 a third party would get.
+    """
     owner_token = make_clerk_token(subject="user_owner")
     organization_id = (await create_org(api_client, owner_token, "Owned Gym"))[
         "organization"
@@ -159,7 +166,198 @@ async def test_the_last_owner_cannot_be_demoted(
         headers=auth_header(owner_token),
     )
 
+    assert response.status_code == 403
+
+
+async def test_the_sole_owner_cannot_self_suspend(
+    api_client, make_clerk_token, db_session
+):
+    """A status-only change is not a role change, so this reaches the real 409."""
+    owner_token = make_clerk_token(subject="user_owner")
+    organization_id = (await create_org(api_client, owner_token, "Owned Gym"))[
+        "organization"
+    ]["id"]
+    owner_id = await _user_id(db_session, "user_owner")
+
+    response = await api_client.patch(
+        f"/api/v1/organizations/{organization_id}/members/{owner_id}",
+        json={"status": "suspended"},
+        headers=auth_header(owner_token),
+    )
+
     assert response.status_code == 409
+    assert "owner" in response.json()["detail"].lower()
+
+
+async def test_a_second_owner_can_demote_the_first(
+    api_client, make_clerk_token, db_session
+):
+    """With two owners, one may demote the other — the invariant is coverage, not count."""
+    owner_token = make_clerk_token(subject="user_owner")
+    other_token = make_clerk_token(subject="user_other")
+    organization_id = (await create_org(api_client, owner_token, "Owned Gym"))[
+        "organization"
+    ]["id"]
+    await _materialise_user(api_client, other_token)
+    other_id = await _user_id(db_session, "user_other")
+    await api_client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        json={"user_id": str(other_id), "role": "owner"},
+        headers=auth_header(owner_token),
+    )
+
+    response = await api_client.patch(
+        f"/api/v1/organizations/{organization_id}/members/{other_id}",
+        json={"role": "manager"},
+        headers=auth_header(owner_token),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["role"] == "manager"
+
+
+async def test_an_admin_cannot_demote_the_owner(
+    api_client, make_clerk_token, db_session
+):
+    """users:manage (Admin) must not be able to depose an owner."""
+    owner_token = make_clerk_token(subject="user_owner")
+    admin_token = make_clerk_token(subject="user_admin")
+    organization_id = (await create_org(api_client, owner_token, "Owned Gym"))[
+        "organization"
+    ]["id"]
+    await _materialise_user(api_client, admin_token)
+    admin_id = await _user_id(db_session, "user_admin")
+    await api_client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        json={"user_id": str(admin_id), "role": "admin"},
+        headers=auth_header(owner_token),
+    )
+    result = await db_session.execute(select(User).where(User.id == admin_id))
+    result.scalar_one().organization_id = uuid.UUID(organization_id)
+    await db_session.commit()
+    owner_id = await _user_id(db_session, "user_owner")
+
+    response = await api_client.patch(
+        f"/api/v1/organizations/{organization_id}/members/{owner_id}",
+        json={"role": "staff"},
+        headers=auth_header(admin_token),
+    )
+
+    assert response.status_code == 403
+    assert (
+        response.json()["detail"]
+        == "Only an existing owner can grant or revoke the owner seat."
+    )
+
+
+async def test_an_admin_cannot_suspend_the_owner(
+    api_client, make_clerk_token, db_session
+):
+    """The owner-seat guard covers status changes too, not just role changes."""
+    owner_token = make_clerk_token(subject="user_owner")
+    admin_token = make_clerk_token(subject="user_admin")
+    organization_id = (await create_org(api_client, owner_token, "Owned Gym"))[
+        "organization"
+    ]["id"]
+    await _materialise_user(api_client, admin_token)
+    admin_id = await _user_id(db_session, "user_admin")
+    await api_client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        json={"user_id": str(admin_id), "role": "admin"},
+        headers=auth_header(owner_token),
+    )
+    result = await db_session.execute(select(User).where(User.id == admin_id))
+    result.scalar_one().organization_id = uuid.UUID(organization_id)
+    await db_session.commit()
+    owner_id = await _user_id(db_session, "user_owner")
+
+    response = await api_client.patch(
+        f"/api/v1/organizations/{organization_id}/members/{owner_id}",
+        json={"status": "suspended"},
+        headers=auth_header(admin_token),
+    )
+
+    assert response.status_code == 403
+
+
+async def test_an_admin_cannot_grant_the_owner_seat(
+    api_client, make_clerk_token, db_session
+):
+    """An admin promoting a third user to owner is ownership-transfer, not member management."""
+    owner_token = make_clerk_token(subject="user_owner")
+    admin_token = make_clerk_token(subject="user_admin")
+    third_token = make_clerk_token(subject="user_third")
+    organization_id = (await create_org(api_client, owner_token, "Owned Gym"))[
+        "organization"
+    ]["id"]
+    await _materialise_user(api_client, admin_token)
+    await _materialise_user(api_client, third_token)
+    admin_id = await _user_id(db_session, "user_admin")
+    third_id = await _user_id(db_session, "user_third")
+    await api_client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        json={"user_id": str(admin_id), "role": "admin"},
+        headers=auth_header(owner_token),
+    )
+    result = await db_session.execute(select(User).where(User.id == admin_id))
+    result.scalar_one().organization_id = uuid.UUID(organization_id)
+    await db_session.commit()
+
+    response = await api_client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        json={"user_id": str(third_id), "role": "owner"},
+        headers=auth_header(admin_token),
+    )
+
+    assert response.status_code == 403
+    assert (
+        response.json()["detail"] == "Only an existing owner can grant the owner seat."
+    )
+
+
+async def test_no_actor_can_change_their_own_role(
+    api_client, make_clerk_token, db_session
+):
+    """
+    Self role change is blocked unconditionally, not just for owners.
+
+    An admin promoting themselves to owner by editing their own membership row
+    is exactly the escalation this closes.
+    """
+    owner_token = make_clerk_token(subject="user_owner")
+    admin_token = make_clerk_token(subject="user_admin")
+    organization_id = (await create_org(api_client, owner_token, "Owned Gym"))[
+        "organization"
+    ]["id"]
+    await _materialise_user(api_client, admin_token)
+    admin_id = await _user_id(db_session, "user_admin")
+    await api_client.post(
+        f"/api/v1/organizations/{organization_id}/members",
+        json={"user_id": str(admin_id), "role": "admin"},
+        headers=auth_header(owner_token),
+    )
+    result = await db_session.execute(select(User).where(User.id == admin_id))
+    result.scalar_one().organization_id = uuid.UUID(organization_id)
+    await db_session.commit()
+
+    response = await api_client.patch(
+        f"/api/v1/organizations/{organization_id}/members/{admin_id}",
+        json={"role": "owner"},
+        headers=auth_header(admin_token),
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "You cannot change your own role."
+
+    result = await db_session.execute(
+        select(OrganizationMembership.role).where(
+            OrganizationMembership.organization_id == uuid.UUID(organization_id),
+            OrganizationMembership.user_id == admin_id,
+        )
+    )
+    assert (
+        result.scalar_one() == OrganizationMemberRole.ADMIN
+    ), "the row must be unchanged, not partially applied"
 
 
 async def test_a_second_owner_can_be_removed(api_client, make_clerk_token, db_session):

@@ -126,4 +126,71 @@ Need a lightweight client-state solution alongside React Query (which handles se
 
 ---
 
+## ADR-0006: RBAC Role Catalogue — Global System Roles, Not Per-Tenant Copies
+
+**Status:** Accepted
+**Date:** 2026-09-10
+**Deciders:** Backend engineering
+
+### Context
+Organizations need a working role/permission system from the moment they are
+created — owner, admin, manager, trainer, staff, member — without requiring an
+operator to configure RBAC by hand before the members API is usable. `roles`
+already supported this via `organization_id IS NULL` + `is_system = true`
+(global role, tenant carried on the `user_roles` assignment instead), but
+nothing populated it, and the only seeding path (`ensure_owner_role`) minted a
+fresh "Owner" role row per organization.
+
+### Decision
+Six system roles (`owner`, `admin`, `manager`, `trainer`, `staff`, `member`)
+are seeded once as global rows and reused by every organization; the tenant
+lives entirely on the `user_roles.organization_id` assignment. Each
+`organization_memberships` seat auto-grants the same-named system role
+(`sync_seat_rbac_role`), so a newly added member is immediately usable instead
+of holding a seat that grants nothing. Permissions follow the `resource:action`
+convention already established by `DEFAULT_PERMISSIONS` (colon, not dot) — the
+existing convention wins over introducing a second one. Custom, per-organization
+roles remain fully supported (`organization_id` set, `is_system = false`) for
+anything the six system roles don't cover.
+
+Two escalation invariants are enforced in the service layer, not just by
+convention:
+- `rbac:manage` (creating/editing roles) is granted to `owner` only — anyone who
+  can edit roles can grant themselves any permission, so holding it below owner
+  is equivalent to ownership.
+- Granting, revoking, or otherwise touching a membership that holds the `owner`
+  seat (role change *or* status change) requires the actor to already hold the
+  owner seat, and no actor may ever change their own membership role — closing
+  the specific self-promotion path where an admin (who holds `users:manage`)
+  edits their own membership row to `role: owner`.
+
+### Alternatives Considered
+- Per-organization role copies (the original `ensure_owner_role` design) — 6
+  rows × N organizations instead of 6 total; a permission change to "Manager"
+  would need a migration touching every tenant's copy instead of one row.
+- `resource.action` (dot) permission codes, as a generic template suggested —
+  rejected because the repository already has 29 permissions and every
+  authorization dependency, migration, and test using `resource:action`;
+  switching would be a parallel convention with no functional benefit.
+- Blocking self-role-change only when the actor is the last owner — rejected as
+  a "check then update" race and as insufficient: the actual risk is a non-owner
+  changing their own row, not specifically emptying the organization of owners.
+  The rule is now unconditional.
+
+### Consequences
+- Adding or changing a system role's permission set requires one migration
+  regardless of tenant count.
+- `member.read`-style per-resource self-service (a member viewing only their own
+  attendance record) is out of scope until object-level authorization exists;
+  the `member` system role is intentionally near-empty because permissions here
+  are organization-wide.
+- `UserRole.branch_id` exists and is accepted end-to-end (`assign_role_to_user`,
+  `user_has_permission(..., branch_id=...)`) but is not yet evaluated — a
+  branch-scoped assignment currently grants its permissions organization-wide,
+  same as an unscoped one. Enforcing branch scope is deferred until a
+  branch-scoped resource actually needs it, to avoid pretending enforcement
+  exists before there is anything to enforce it against.
+
+---
+
 *Add new ADRs below as decisions are made. Do not skip logging a decision just because it feels "obvious" at the time — future context is exactly what this file protects.*

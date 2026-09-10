@@ -45,3 +45,11 @@ class MainBranchRequired(Exception):
 
 class UserNotFound(Exception):
     """Raised when the user being added to an organization does not exist."""
+
+
+class SelfRoleChangeNotAllowed(Exception):
+    """Raised when an actor attempts to change their own membership role."""
+
+
+class OwnerSeatRequiresOwner(Exception):
+    """Raised when a non-owner actor tries to grant or revoke the owner seat."""

@@ -90,6 +90,44 @@ truth. `seed_system_roles()` is idempotent and reconciles in both directions: it
 grants permissions that are missing and revokes ones no longer in a definition.
 Custom roles an organization creates through `/api/v1/rbac/roles` are untouched.
 
+### Role assignment is a service-layer decision, not a route-level check
+
+`assign_role_to_user()` re-validates everything, so a route handler never has to
+know the rules itself:
+
+- the target `role_id` must resolve under the caller's organization (a custom
+  role from another tenant, or a role that does not exist, both raise
+  `RoleNotFound` — the same way a missing one would);
+- the target `user_id` must have a live `OrganizationMembership` in that
+  organization (`UserNotInOrganization` otherwise) — membership, not
+  `users.organization_id`, decides who belongs;
+- an optional `branch_id` must belong to the same organization
+  (`BranchNotInOrganization` otherwise).
+
+Reaching this function at all already requires `rbac:manage`, which only the
+`owner` seat holds — so self-assignment of the owner *RBAC role* is not a
+distinct escalation path; it is already gated by the permission catalogue.
+
+### Self-promotion and the owner seat
+
+The one seat-level (not RBAC-level) escalation path is the membership PATCH/POST
+endpoints, because `users:manage` — needed to add or edit a member — is held by
+`admin`, not just `owner`. Two rules close it, enforced in
+`update_membership()`/`add_membership()`, not in the router:
+
+- **No actor may change their own membership role**, unconditionally. An admin
+  editing their own row to `{"role": "owner"}` is refused with 403 before any
+  other check runs, regardless of whether they are the last owner or not.
+- **Only an existing owner may grant, revoke, or otherwise touch a membership
+  that holds the owner seat** — a role change, a status change (suspending an
+  owner's account), or adding a new member as owner all require the actor's own
+  membership to already be `owner`. This is what stops `users:manage` (Admin)
+  from minting or deposing owners.
+
+Both checks run before the last-owner-removal check, so demoting the sole owner
+answers 403 (self-role-change) rather than 409 — self-promotion protection is
+strictly stronger than merely preserving owner *count*.
+
 ## Never trust a client-supplied organization_id
 
 No request schema exposes `organization_id`; a test asserts this against the

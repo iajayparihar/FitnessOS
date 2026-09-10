@@ -35,6 +35,8 @@ from app.modules.tenants.exceptions import (
     MainBranchRequired,
     MembershipNotFound,
     OrgNotFound,
+    OwnerSeatRequiresOwner,
+    SelfRoleChangeNotAllowed,
     SlugUnavailable,
     UserNotFound,
 )
@@ -486,6 +488,11 @@ async def add_membership(
     if existing.scalar_one_or_none() is not None:
         raise DuplicateMembership
 
+    if role is OrganizationMemberRole.OWNER:
+        await _require_actor_is_owner(
+            db, organization_id=organization_id, actor_id=actor_id
+        )
+
     membership = OrganizationMembership(
         organization_id=organization_id,
         user_id=user_id,
@@ -599,6 +606,27 @@ async def update_membership(
     if not changes:
         return membership
 
+    if "role" in changes and actor_id == user_id:
+        # A user must never be able to change their own role by manipulating a
+        # request body, even downward — an owner "stepping down" is a separate,
+        # deliberate flow this phase does not implement, not a side effect of
+        # this endpoint.
+        raise SelfRoleChangeNotAllowed
+
+    # Granting the owner seat, revoking it, or otherwise touching a membership
+    # that currently holds it (e.g. suspending its status) is ownership-level
+    # administration, not routine member management: gated to actors who
+    # already hold the owner seat themselves so users:manage — held by Admin —
+    # cannot mint, depose, or disable an owner.
+    touches_owner_seat = (
+        membership.role is OrganizationMemberRole.OWNER
+        or changes.get("role") is OrganizationMemberRole.OWNER
+    )
+    if touches_owner_seat:
+        await _require_actor_is_owner(
+            db, organization_id=organization_id, actor_id=actor_id
+        )
+
     loses_owner_seat = (
         membership.role is OrganizationMemberRole.OWNER
         and changes.get("role", OrganizationMemberRole.OWNER)
@@ -679,6 +707,23 @@ async def remove_membership(
         before_state={"user_id": str(user_id), "role": membership.role.value},
     )
     await db.commit()
+
+
+async def _require_actor_is_owner(
+    db: AsyncSession,
+    *,
+    organization_id: uuid.UUID,
+    actor_id: uuid.UUID,
+) -> None:
+    """Raise OwnerSeatRequiresOwner unless the actor holds an active owner seat."""
+    actor_membership = await get_active_membership(
+        db, user_id=actor_id, organization_id=organization_id
+    )
+    if (
+        actor_membership is None
+        or actor_membership.role is not OrganizationMemberRole.OWNER
+    ):
+        raise OwnerSeatRequiresOwner
 
 
 async def _count_active_owners(

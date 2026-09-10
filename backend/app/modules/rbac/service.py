@@ -586,8 +586,18 @@ async def user_has_permission(
     user_id: uuid.UUID,
     organization_id: uuid.UUID,
     permission_code: str,
+    branch_id: uuid.UUID | None = None,
 ) -> bool:
-    """Return whether a user has a permission in an organization."""
+    """
+    Return whether a user has a permission in an organization.
+
+    ``branch_id`` is accepted for forward compatibility with branch-scoped
+    resources but is NOT yet enforced: a role assignment grants its permissions
+    organization-wide regardless of the ``UserRole.branch_id`` it was made with.
+    Evaluating branch scope here would be fake enforcement until a caller
+    actually has a branch-scoped resource to check against; ``UserRole.branch_id``
+    exists so that evaluation can be added without a schema change.
+    """
     result = await db.execute(
         select(Permission.id)
         .join(RolePermission, RolePermission.permission_id == Permission.id)
@@ -614,6 +624,7 @@ async def ensure_user_has_permission(
     user_id: uuid.UUID,
     organization_id: uuid.UUID,
     permission_code: str,
+    branch_id: uuid.UUID | None = None,
 ) -> None:
     """Raise PermissionDenied when a user lacks a permission."""
     if not await user_has_permission(
@@ -621,6 +632,7 @@ async def ensure_user_has_permission(
         user_id=user_id,
         organization_id=organization_id,
         permission_code=permission_code,
+        branch_id=branch_id,
     ):
         raise PermissionDenied(permission_code)
 

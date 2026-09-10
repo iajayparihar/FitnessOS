@@ -16,6 +16,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.tenancy import TENANT_SETTING, get_tenant_setting, set_tenant_context
 from app.modules.auth.models import User
+from app.modules.rbac.exceptions import RoleNotFound, UserNotInOrganization
+from app.modules.rbac.schemas import RoleCreate
+from app.modules.rbac.service import assign_role_to_user, create_role, get_system_role
 from app.modules.tenants.exceptions import BranchNotFound, MembershipNotFound
 from app.modules.tenants.models import (
     OrganizationBranch,
@@ -392,3 +395,86 @@ async def test_cross_tenant_errors_reveal_nothing(two_tenants, api_client):
     body = real_other_tenant.text
     for secret in ("Gym B", two_tenants["org_b"], two_tenants["branch_b"]):
         assert secret not in body
+
+
+# --------------------------------------------------------------------------- #
+# RBAC role assignment
+# --------------------------------------------------------------------------- #
+
+
+async def test_a_users_custom_role_from_org_a_cannot_be_assigned_in_org_b(
+    two_tenants, api_client, db_session
+):
+    """A role_id is scoped by organization; another tenant's role must not resolve."""
+    custom_role = await create_role(
+        db_session,
+        organization_id=uuid.UUID(two_tenants["org_a"]),
+        payload=RoleCreate(name="A-Only Role", permission_codes=["billing:read"]),
+    )
+
+    response = await api_client.post(
+        f"/api/v1/rbac/users/{two_tenants['user_b']}/roles",
+        json={"role_id": str(custom_role.id)},
+        headers=auth_header(two_tenants["token_b"]),
+    )
+
+    assert response.status_code == 404
+
+
+async def test_assigning_a_role_across_organizations_is_rejected_at_the_service(
+    two_tenants, db_session
+):
+    """
+    Both halves of a cross-tenant role assignment are rejected independently.
+
+    A role scoped to Organization A must not resolve for Organization B, and a
+    user who belongs only to Organization B must not be assignable a role under
+    Organization A's id — either mistake alone is enough to catch a bug at a new
+    call site.
+    """
+    role_a = await create_role(
+        db_session,
+        organization_id=uuid.UUID(two_tenants["org_a"]),
+        payload=RoleCreate(name="A Role", permission_codes=["billing:read"]),
+    )
+
+    with pytest.raises(RoleNotFound):
+        await assign_role_to_user(
+            db_session,
+            user_id=two_tenants["user_b"],
+            role_id=role_a.id,
+            organization_id=uuid.UUID(two_tenants["org_b"]),
+        )
+
+    owner_role = await get_system_role(db_session, slug="owner")
+    with pytest.raises(UserNotInOrganization):
+        await assign_role_to_user(
+            db_session,
+            user_id=two_tenants["user_b"],
+            role_id=owner_role.id,
+            organization_id=uuid.UUID(two_tenants["org_a"]),
+        )
+
+
+async def test_a_user_b_cannot_assign_roles_inside_organization_a(
+    two_tenants, api_client
+):
+    """rbac:manage is resolved from the caller's own tenant, never the path body."""
+    owner_role_id_response = await api_client.get(
+        "/api/v1/rbac/roles", headers=auth_header(two_tenants["token_a"])
+    )
+    owner_role_id = next(
+        row["id"]
+        for row in owner_role_id_response.json()["data"]
+        if row["slug"] == "staff"
+    )
+
+    response = await api_client.post(
+        f"/api/v1/rbac/users/{two_tenants['user_a']}/roles",
+        json={"role_id": owner_role_id},
+        headers=auth_header(two_tenants["token_b"]),
+    )
+
+    # user_a is not a member of Organization B, so this is UserNotInOrganization
+    # under B's tenant scope regardless of which role_id was supplied.
+    assert response.status_code == 404

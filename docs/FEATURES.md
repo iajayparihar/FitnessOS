@@ -23,7 +23,7 @@ This file is the single source of truth for what's actually built vs. planned. U
 | Tenant onboarding/signup | ⬜ | Phase 3 |
 | Subscription/plan management | ⬜ | Phase 3 |
 | Tenant branding/settings | ⬜ | Phase 3 |
-| RBAC roles & permissions | ⬜ | Phase 3 |
+| RBAC roles & permissions | ✅ | System role catalogue (owner/admin/manager/trainer/staff/member), custom roles, org- and branch-aware assignment foundation |
 
 ## CRM
 | Feature | Status | Notes |

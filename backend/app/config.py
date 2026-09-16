@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     rate_limit_default: str = "100/minute"
     rate_limit_sensitive: str = "10/minute"
 
+    log_level: str = "INFO"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

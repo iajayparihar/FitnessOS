@@ -26,6 +26,7 @@ DEFAULT_PERMISSIONS: tuple[tuple[str, str, str], ...] = (
     ("users:manage", "Manage organization users.", "users"),
     ("rbac:read", "Read roles and permissions.", "rbac"),
     ("rbac:manage", "Create roles and assign permissions.", "rbac"),
+    ("crm:read", "Read CRM data.", "crm"),
     ("crm:manage", "Manage CRM data.", "crm"),
     ("membership:manage", "Manage members and memberships.", "membership"),
     ("attendance:manage", "Manage attendance.", "attendance"),

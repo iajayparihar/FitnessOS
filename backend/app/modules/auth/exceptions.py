@@ -1,6 +1,6 @@
-class InvalidCredentials(Exception):
-    """Raised when supplied credentials or tokens are invalid."""
+class AlreadyOnboarded(Exception):
+    """Raised when a user who already belongs to an organization onboards again."""
 
 
-class InactiveUser(Exception):
-    """Raised when an inactive user tries to authenticate."""
+class InviteInvalid(Exception):
+    """Raised when an invite is missing, expired, already used, or mismatched."""

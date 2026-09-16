@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import uuid
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import TokenExpired, decode_jwt
+from app.core.clerk import ClerkAuthError, verify_clerk_token
 from app.db.session import get_db
 from app.modules.auth.models import User
-from app.modules.auth.service import get_user_by_id, get_valid_session_by_id
+from app.modules.auth.service import get_or_create_user_from_clerk
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -18,7 +16,11 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Resolve the authenticated user from a bearer access token."""
+    """Resolve the authenticated user from a Clerk session token.
+
+    Verifies the Clerk-issued JWT and provisions the local user on first sight.
+
+    """
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -26,33 +28,17 @@ async def get_current_user(
         )
 
     try:
-        payload = decode_jwt(credentials.credentials)
-        if payload.get("type") != "access":
-            raise ValueError("Expected access token.")
-        user_id = uuid.UUID(str(payload["sub"]))
-        session_id = uuid.UUID(str(payload["sid"]))
-    except TokenExpired as exc:
+        claims = verify_clerk_token(credentials.credentials)
+    except ClerkAuthError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token has expired.",
-        ) from exc
-    except (KeyError, ValueError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token.",
+            detail="Invalid or expired session token.",
         ) from exc
 
-    session = await get_valid_session_by_id(db, session_id=session_id)
-    if session is None or session.user_id != user_id:
+    user = await get_or_create_user_from_clerk(db, claims=claims)
+    if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token.",
-        )
-
-    user = await get_user_by_id(db, user_id=user_id)
-    if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token.",
+            detail="User account is inactive.",
         )
     return user

@@ -20,13 +20,25 @@ Primary risks for this platform:
 
 ## 2. Authentication
 
-- Passwords hashed with **bcrypt or Argon2** — never plaintext, never reversible encryption.
-- Minimum password policy enforced (length, complexity) at signup/reset.
-- **JWT access tokens**: short-lived (~15 min), signed with a strong secret/asymmetric key, contain `user_id`, `tenant_id`, `role`, minimal claims only.
-- **Refresh tokens**: long-lived, stored hashed in DB, rotated on every use, revocable (logout invalidates), one-time-use (reuse of an old refresh token revokes the whole token family — replay-attack protection).
-- Email verification required before full account activation.
-- Account lockout / exponential backoff after repeated failed login attempts.
-- Multi-factor authentication (MFA) — planned for Owner/Admin roles, tracked in `ROADMAP.md`.
+Authentication is delegated to **Clerk** as the identity provider. Clerk owns
+credential storage, login, signup, password reset, email verification, MFA, and
+login-side account lockout — the backend does not store passwords or issue its
+own sessions.
+
+- **Session verification**: every request carries a Clerk-issued session JWT
+  (RS256). The backend verifies the signature against Clerk's JWKS (or a
+  configured PEM public key), plus `exp`, `iss` (when set), and the authorized
+  party (`azp`). Verification is the single chokepoint in
+  `app/modules/auth/dependencies.py:get_current_user`.
+- **Just-in-time provisioning**: on first authenticated request, a local `User`
+  is created and linked to the Clerk id via a `CLERK` `UserAuthMethod`
+  (`provider_uid = clerk sub`). `email`/name are read from token claims exposed
+  through a Clerk **JWT template** — no live Clerk API call is required.
+- **Organization membership** stays authoritative in our database: an orgless
+  user calls `POST /auth/onboarding` to create an org and become owner, or
+  `POST /auth/invites/accept` to join via an invite. RBAC is unchanged.
+- **MFA / password policy / email verification** are configured in the Clerk
+  dashboard rather than in application code.
 
 ---
 
@@ -94,7 +106,7 @@ Super Admin (platform) · Gym Owner · Manager · Receptionist · Trainer · Nut
 
 ## 8. Rate Limiting & Abuse Prevention
 
-- Rate limiting per IP and per authenticated user/tenant at the gateway layer, stricter on auth endpoints (`/login`, `/forgot-password`).
+- Rate limiting is enforced in-app via `slowapi` (per-IP), applied as a global default with a tighter limit on sensitive endpoints (`/auth/onboarding`, `/auth/invites/accept`). Shared across workers via Redis when `REDIS_URL` is set. Login-side throttling/lockout is handled by Clerk.
 - CAPTCHA or equivalent on public signup if abuse is observed.
 - Audit alerts on anomalous patterns (e.g., mass export attempts, repeated 403s).
 

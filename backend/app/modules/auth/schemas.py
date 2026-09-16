@@ -8,34 +8,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.modules.tenants.schemas import OrgCreate, OrgResponse
 
 
-class LoginRequest(BaseModel):
-    """Payload for password login."""
-
-    email: str = Field(min_length=3, max_length=320)
-    password: str = Field(min_length=8, max_length=256)
-    organization_id: uuid.UUID | None = None
-
-
-class RegisterRequest(BaseModel):
-    """Payload for owner signup with organization creation."""
+class OnboardingRequest(BaseModel):
+    """Payload for an authenticated user to create their organization."""
 
     organization: OrgCreate
-    email: str = Field(min_length=3, max_length=320)
-    password: str = Field(min_length=8, max_length=256)
-    first_name: str | None = Field(default=None, max_length=120)
-    last_name: str | None = Field(default=None, max_length=120)
 
 
-class RefreshRequest(BaseModel):
-    """Payload for access-token refresh."""
+class InviteAcceptRequest(BaseModel):
+    """Payload for accepting an organization invite."""
 
-    refresh_token: str = Field(min_length=32)
-
-
-class LogoutRequest(BaseModel):
-    """Payload for refresh-token revocation."""
-
-    refresh_token: str = Field(min_length=32)
+    token: str = Field(min_length=1, max_length=512)
 
 
 class UserResponse(BaseModel):
@@ -52,25 +34,17 @@ class UserResponse(BaseModel):
     last_login_at: datetime | None = None
 
 
-class TokenPair(BaseModel):
-    """Access and refresh token pair."""
-
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-
-class AuthData(TokenPair):
-    """Authentication response data."""
+class AccountData(BaseModel):
+    """User plus resolved organization after onboarding or invite acceptance."""
 
     user: UserResponse
     organization: OrgResponse | None = None
 
 
-class AuthResponse(BaseModel):
-    """Standard auth response envelope."""
+class AccountResponse(BaseModel):
+    """Standard account response envelope."""
 
-    data: AuthData
+    data: AccountData
 
 
 class UserEnvelope(BaseModel):

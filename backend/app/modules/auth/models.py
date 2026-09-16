@@ -43,6 +43,7 @@ class AuthProvider(str, enum.Enum):
     TOTP = "totp"
     SAML = "saml"
     MAGICLINK = "magiclink"
+    CLERK = "clerk"
 
 
 class User(Base, AuditMixin):
@@ -84,11 +85,6 @@ class User(Base, AuditMixin):
     )
     auth_methods: Mapped[list["UserAuthMethod"]] = relationship(
         "UserAuthMethod",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
-    sessions: Mapped[list["Session"]] = relationship(
-        "Session",
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -195,7 +191,6 @@ class UserAuthMethod(Base, TimestampMixin):
         nullable=False,
     )
     provider_uid: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    password_hash: Mapped[Optional[str]] = mapped_column(Text, default=None)
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     last_used_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), default=None
@@ -207,10 +202,6 @@ class UserAuthMethod(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        CheckConstraint(
-            "(provider != 'password') OR (password_hash IS NOT NULL)",
-            name="ck_auth_method_password_hash",
-        ),
         Index(
             "ix_user_auth_methods_user_id",
             "user_id",
@@ -227,58 +218,6 @@ class UserAuthMethod(Base, TimestampMixin):
         return (
             f"<UserAuthMethod(id={self.id}, user_id={self.user_id}, "
             f"provider={self.provider}, is_primary={self.is_primary})>"
-        )
-
-
-class Session(Base, TimestampMixin):
-    __tablename__ = "sessions"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    organization_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
-        default=None,
-    )
-    refresh_token_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    revoked_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), default=None
-    )
-    ip_address: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    user_agent: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    device_info: Mapped[Optional[dict]] = mapped_column(JSONB, default=None)
-
-    user: Mapped[User] = relationship(
-        "User",
-        back_populates="sessions",
-    )
-
-    __table_args__ = (
-        UniqueConstraint("refresh_token_hash", name="uq_sessions_refresh_token_hash"),
-        Index("ix_sessions_user_id", "user_id"),
-        Index("ix_sessions_expires_at", "expires_at"),
-        Index(
-            "ix_sessions_organization_id_not_null",
-            "organization_id",
-            postgresql_where=text("organization_id IS NOT NULL"),
-        ),
-    )
-
-    def __repr__(self) -> str:
-        return (
-            f"<Session(id={self.id}, user_id={self.user_id}, "
-            f"expires_at={self.expires_at}, revoked_at={self.revoked_at})>"
         )
 
 

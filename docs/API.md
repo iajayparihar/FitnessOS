@@ -27,17 +27,16 @@ https://api.fitnessbusinessos.com/api/v1/
 
 ## 3. Authentication
 
-- Bearer JWT in the `Authorization` header: `Authorization: Bearer <access_token>`.
-- Access tokens: short-lived (e.g., 15 min). Refresh tokens: long-lived, rotated on use, stored hashed server-side.
+- Identity is provided by **Clerk** (see `SECURITY.md`). Clients send the Clerk
+  session token as a bearer JWT: `Authorization: Bearer <clerk_session_token>`.
+- The backend verifies the token, provisions the user just-in-time, and enforces
+  RBAC. Login, signup, password reset, email verification, and MFA are handled by
+  Clerk, not by this API.
 
 ```
-POST /api/v1/auth/login
-POST /api/v1/auth/refresh
-POST /api/v1/auth/logout
-POST /api/v1/auth/register        (tenant/owner signup)
-POST /api/v1/auth/verify-email
-POST /api/v1/auth/forgot-password
-POST /api/v1/auth/reset-password
+GET  /api/v1/auth/me                (current user)
+POST /api/v1/auth/onboarding        (create organization + become owner)
+POST /api/v1/auth/invites/accept    (join an organization via invite)
 ```
 
 ---

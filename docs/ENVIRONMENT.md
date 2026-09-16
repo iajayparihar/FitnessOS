@@ -34,13 +34,30 @@ All configuration is environment-driven — no hardcoded secrets or environment-
 | `CELERY_BROKER_URL` | Celery broker (usually same as Redis) | `redis://localhost:6379/1` |
 | `CELERY_RESULT_BACKEND` | Celery result backend | `redis://localhost:6379/2` |
 
-### Auth / JWT
+### Auth / Clerk
+Clerk is the identity provider. The backend verifies Clerk session JWTs (RS256)
+and provisions local users just-in-time. Auth is only enforced once verification
+is configured (a JWKS URL or a PEM public key). Configure a Clerk **JWT template**
+that adds `email`, `first_name`, and `last_name` claims so users can be
+provisioned without calling the Clerk API.
+
 | Variable | Description | Example |
 |---|---|---|
-| `JWT_SECRET_KEY` | JWT signing secret (or private key if asymmetric) | `<random 64+ char string>` |
-| `JWT_ALGORITHM` | Signing algorithm | `HS256` \| `RS256` |
-| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Access token TTL | `15` |
-| `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token TTL | `30` |
+| `CLERK_SECRET_KEY` | Clerk backend API secret (reserved for admin calls) | `sk_test_...` |
+| `CLERK_PUBLISHABLE_KEY` | Clerk publishable key (frontend) | `pk_test_...` |
+| `CLERK_JWKS_URL` | Clerk JWKS endpoint for RS256 verification (production) | `https://<app>.clerk.accounts.dev/.well-known/jwks.json` |
+| `CLERK_JWT_PUBLIC_KEY` | PEM public key alternative to JWKS (offline/tests); takes precedence | `-----BEGIN PUBLIC KEY-----...` |
+| `CLERK_ISSUER` | Expected `iss` claim (optional) | `https://<app>.clerk.accounts.dev` |
+| `CLERK_AUTHORIZED_PARTIES` | Comma-separated allowed `azp` values | `https://app.example.com` |
+
+### Rate limiting
+| Variable | Description | Example |
+|---|---|---|
+| `RATE_LIMIT_DEFAULT` | Global per-IP limit applied to all routes | `100/minute` |
+| `RATE_LIMIT_SENSITIVE` | Tighter limit on onboarding/invite endpoints | `10/minute` |
+
+Rate limiting uses `REDIS_URL` for shared storage across workers, falling back
+to in-process memory when it is unset.
 
 ### Email
 | Variable | Description | Example |

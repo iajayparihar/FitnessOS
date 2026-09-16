@@ -1,5 +1,9 @@
 from fastapi import APIRouter, FastAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
+from app.core.rate_limit import limiter
 from app.modules.analytics.router import router as analytics_router
 from app.modules.attendance.router import router as attendance_router
 from app.modules.auth.router import router as auth_router
@@ -60,6 +64,9 @@ def register_routes(app: FastAPI) -> None:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Fitness Business OS API", version="0.1.0")
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
     register_routes(app)
     return app
 

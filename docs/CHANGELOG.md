@@ -10,11 +10,22 @@ Categories used: `Added`, `Changed`, `Fixed`, `Removed`, `Security`, `Docs`.
 
 ## [Unreleased]
 
+### Added
+- Clerk-based authentication: backend verifies Clerk session JWTs and provisions users just-in-time; `POST /auth/onboarding` (create org + become owner) and `POST /auth/invites/accept` (join via invite) endpoints.
+- In-app API rate limiting (`slowapi`), with a tighter limit on onboarding/invite endpoints.
+
+### Changed
+- Authentication delegated to Clerk as the identity provider (see ADR-0006). RBAC and multi-tenant isolation are unchanged.
+
+### Removed
+- Custom self-issued JWT/refresh-token auth, PBKDF2 password hashing, password login/register/refresh/logout endpoints, and the `sessions` table (password reset, email verification, MFA, and login lockout are now handled by Clerk).
+
+### Security
+- Login-side throttling/lockout handled by Clerk; our API adds per-IP rate limiting.
+
 ### Docs
 - Added full project documentation set: `README.md`, `CLAUDE.md`, `PRD.md`, `ARCHITECTURE.md`, `TECH_STACK.md`, `DATABASE.md`, `API.md`, `CODING_STANDARDS.md`, `FOLDER_STRUCTURE.md`, `SECURITY.md`, `DEPLOYMENT.md`, `TESTING.md`, `FEATURES.md`, `ROADMAP.md`, `CHANGELOG.md`, `DECISIONS.md`, `ENVIRONMENT.md`, `ERROR_HANDLING.md`, `OBSERVABILITY.md`, `CONTRIBUTING.md`.
-
-### Added
-- *(Nothing shipped yet — project is in Phase 1: Documentation, per `ROADMAP.md`.)*
+- Updated `SECURITY.md`, `ENVIRONMENT.md`, and added ADR-0006 for the Clerk auth model.
 
 ---
 

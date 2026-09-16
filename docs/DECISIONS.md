@@ -126,4 +126,29 @@ Need a lightweight client-state solution alongside React Query (which handles se
 
 ---
 
+## ADR-0006: Clerk as Identity Provider (Replaces Custom JWT/Password Auth)
+
+**Status:** Accepted
+**Date:** 2026-09-17
+**Deciders:** Founding team
+
+### Context
+The backend had a custom auth stack (self-signed JWTs, PBKDF2 passwords, DB-backed refresh sessions). Maintaining credential storage, password reset, email verification, MFA, and login lockout in-house is significant, security-sensitive surface for a small team. RBAC and multi-tenancy are our differentiators; identity is not.
+
+### Decision
+Delegate identity to **Clerk**. The backend verifies Clerk session JWTs (RS256) at a single chokepoint (`get_current_user`), provisions local users just-in-time (linked via a `CLERK` `UserAuthMethod`), and keeps organization/RBAC state authoritative in our database. Password hashing, self-issued JWTs, and the `sessions` table were removed.
+
+### Alternatives Considered
+- **Keep custom auth** — rejected: ongoing maintenance and security burden (reset/verify/MFA/lockout) for undifferentiated work.
+- **Add Clerk alongside custom auth** — rejected: two identity systems to maintain; contradicts a lean surface.
+- **Other IdPs (Auth0/Cognito/Firebase)** — viable; Clerk chosen for developer experience and first-class organization primitives. Revisit if pricing or org-sync needs change.
+
+### Consequences
+- Less security-critical code; MFA/reset/verification configured in Clerk, not code.
+- New dependency on Clerk availability; requires a Clerk JWT template exposing `email`/name claims for offline provisioning.
+- Org lifecycle sync currently via JIT provisioning + onboarding/invite endpoints; Clerk webhooks can be added later if server-side lifecycle sync is needed.
+- Rate limiting on our own API is now in-app (`slowapi`), since Clerk only covers login-side throttling.
+
+---
+
 *Add new ADRs below as decisions are made. Do not skip logging a decision just because it feels "obvious" at the time — future context is exactly what this file protects.*

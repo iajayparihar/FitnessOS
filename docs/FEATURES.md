@@ -11,7 +11,8 @@ This file is the single source of truth for what's actually built vs. planned. U
 ## Foundation
 | Feature | Status | Notes |
 |---|---|---|
-| Project scaffolding (Docker, CI/CD) | ⬜ | Phase 2 |
+| Project scaffolding (Docker, CI/CD) | 🟨 | `docker-compose` stack (Postgres + backend + frontend) done; CI/CD pending |
+| Frontend testing console | ✅ | Vite+React+TS+MUI app to exercise auth/CRM/RBAC; Clerk or dev login |
 | Authentication | ✅ | Clerk identity provider; JWT verification + JIT provisioning (see ADR-0006) |
 | Email verification | ✅ | Handled by Clerk |
 | Password reset | ✅ | Handled by Clerk |

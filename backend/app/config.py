@@ -1,6 +1,8 @@
 """This module contains the configuration settings for the application."""
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Annotated
+
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from pydantic import field_validator
 
 
@@ -20,7 +22,7 @@ class Settings(BaseSettings):
     clerk_jwks_url: str | None = None
     clerk_jwt_public_key: str | None = None
     clerk_issuer: str | None = None
-    clerk_authorized_parties: list[str] = []
+    clerk_authorized_parties: Annotated[list[str], NoDecode] = []
 
     # Rate limiting. Falls back to in-process memory storage when Redis is unset.
     redis_url: str | None = None
@@ -28,6 +30,13 @@ class Settings(BaseSettings):
     rate_limit_sensitive: str = "10/minute"
 
     log_level: str = "INFO"
+
+    # CORS allowed origins for the browser frontend (comma-separated in env).
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+
+    # Local development only: enables a dev token issuer at /auth/dev/login.
+    # NEVER enable in production — it mints valid session tokens without Clerk.
+    dev_auth_enabled: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -42,10 +51,10 @@ class Settings(BaseSettings):
             return False
         return value
 
-    @field_validator("clerk_authorized_parties", mode="before")
+    @field_validator("clerk_authorized_parties", "cors_origins", mode="before")
     @classmethod
-    def split_authorized_parties(cls, value):
-        """Accept a comma-separated list of authorized parties from the environment."""
+    def split_csv(cls, value):
+        """Accept a comma-separated list from the environment."""
         if isinstance(value, str):
             return [part.strip() for part in value.split(",") if part.strip()]
         return value

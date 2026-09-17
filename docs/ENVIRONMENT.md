@@ -59,6 +59,15 @@ provisioned without calling the Clerk API.
 Rate limiting uses `REDIS_URL` for shared storage across workers, falling back
 to in-process memory when it is unset.
 
+### Frontend / CORS / Dev auth
+| Variable | Description | Example |
+|---|---|---|
+| `CORS_ORIGINS` | Comma-separated browser origins allowed to call the API | `http://localhost:5173` |
+| `DEV_AUTH_ENABLED` | **Local only.** Enables `POST /auth/dev/login`, which mints a local RS256 token verified through the normal Clerk path. Never enable in production. | `1` |
+
+Frontend build vars (see `frontend/.env.example`): `VITE_API_URL`,
+`VITE_CLERK_PUBLISHABLE_KEY` (blank ⇒ dev login), `VITE_CLERK_JWT_TEMPLATE`.
+
 ### Email
 | Variable | Description | Example |
 |---|---|---|

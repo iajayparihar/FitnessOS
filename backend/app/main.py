@@ -1,6 +1,8 @@
 from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.config import settings
 from app.core.error_handlers import register_error_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import register_request_id
@@ -63,10 +65,28 @@ def register_routes(app: FastAPI) -> None:
         app.include_router(router, prefix=f"{API_V1_PREFIX}{prefix}", tags=[tag])
 
 
+def _enable_dev_auth_key() -> None:
+    """When dev auth is on and no Clerk key is set, verify dev-issued tokens."""
+    if settings.dev_auth_enabled and not (
+        settings.clerk_jwt_public_key or settings.clerk_jwks_url
+    ):
+        from app.core.dev_auth import dev_public_key
+
+        settings.clerk_jwt_public_key = dev_public_key()
+
+
 def create_app() -> FastAPI:
     configure_logging()
+    _enable_dev_auth_key()
     app = FastAPI(title="Fitness Business OS API", version="0.1.0")
     app.state.limiter = limiter
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.add_middleware(SlowAPIMiddleware)
     # Registered last so it wraps outermost and request_id is always set.
     register_request_id(app)

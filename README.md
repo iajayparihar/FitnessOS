@@ -2,6 +2,26 @@
 
 A modern, multi-tenant fitness business management platform built with FastAPI, React, and PostgreSQL.
 
+## Try it now (one command)
+
+Bring up Postgres + backend (migrated) + the frontend testing console:
+
+```bash
+docker compose up --build
+```
+
+Then open **http://localhost:5173**:
+
+1. **Dev login** — enter any email (no Clerk account needed; the backend runs with `DEV_AUTH_ENABLED=1`, which mints a local token verified through the real Clerk path). The same email always maps to the same user.
+2. **Onboard** — create an organization; you become its owner with full RBAC permissions.
+3. **Exercise the API** — the **CRM · Leads** tab creates lead sources and leads, converts / marks-lost, and schedules & completes follow-ups. The **RBAC** tab lists your roles and permissions. Every request + response is shown in the right-hand panel.
+
+Backend API + Swagger docs: **http://localhost:8000/docs**.
+
+**Using real Clerk instead:** set `VITE_CLERK_PUBLISHABLE_KEY` (frontend) and `CLERK_JWKS_URL` + a Clerk JWT template exposing `email`/`first_name`/`last_name` (backend), and unset `DEV_AUTH_ENABLED`. See [SECURITY.md](docs/SECURITY.md) and [ENVIRONMENT.md](docs/ENVIRONMENT.md).
+
+> ⚠️ `DEV_AUTH_ENABLED` mints valid sessions without Clerk — for local testing only, never in production.
+
 ## Table of Contents
 
 - [Project Overview](#project-overview)

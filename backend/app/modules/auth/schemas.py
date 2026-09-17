@@ -20,6 +20,23 @@ class InviteAcceptRequest(BaseModel):
     token: str = Field(min_length=1, max_length=512)
 
 
+class DevLoginRequest(BaseModel):
+    """Payload for the local dev token issuer (non-production)."""
+
+    email: str = Field(min_length=3, max_length=320)
+    first_name: str | None = Field(default=None, max_length=120)
+    last_name: str | None = Field(default=None, max_length=120)
+
+
+class DevTokenData(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class DevTokenResponse(BaseModel):
+    data: DevTokenData
+
+
 class UserResponse(BaseModel):
     """Authenticated user response payload."""
 

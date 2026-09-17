@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.dev_auth import mint_dev_token
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.modules.auth.dependencies import get_current_user
@@ -11,6 +12,9 @@ from app.modules.auth.models import User
 from app.modules.auth.schemas import (
     AccountData,
     AccountResponse,
+    DevLoginRequest,
+    DevTokenData,
+    DevTokenResponse,
     InviteAcceptRequest,
     OnboardingRequest,
     UserEnvelope,
@@ -18,6 +22,22 @@ from app.modules.auth.schemas import (
 from app.modules.auth.service import accept_invite, onboard_organization
 
 router = APIRouter()
+
+
+@router.post("/dev/login", response_model=DevTokenResponse)
+async def dev_login(payload: DevLoginRequest) -> DevTokenResponse:
+    """Issue a local dev session token (only when DEV_AUTH_ENABLED)."""
+    if not settings.dev_auth_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found.",
+        )
+    token = mint_dev_token(
+        email=payload.email,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+    )
+    return DevTokenResponse(data=DevTokenData(access_token=token))
 
 
 @router.get("/me", response_model=UserEnvelope)

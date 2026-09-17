@@ -15,9 +15,13 @@ Categories used: `Added`, `Changed`, `Fixed`, `Removed`, `Security`, `Docs`.
 - In-app API rate limiting (`slowapi`), with a tighter limit on onboarding/invite endpoints.
 - Standard error envelope (`{"error": {code, message, details, request_id}}`) via centralized exception handlers, plus a request-id middleware that sets `X-Request-ID` on every response.
 - CRM module (Phase 4): lead sources, leads (create, list with filters + pagination, get, update, convert, mark-lost), and follow-ups (schedule, list, complete). New `crm:read` permission.
+- Frontend testing console (`frontend/`): Vite + React + TS + MUI app that exercises login/onboarding/CRM/RBAC with a live request/response panel. Uses Clerk when `VITE_CLERK_PUBLISHABLE_KEY` is set, otherwise a dev login.
+- Local dev auth issuer (`POST /auth/dev/login`, gated by `DEV_AUTH_ENABLED`) that mints RS256 tokens verified through the normal Clerk path — lets the stack be tested without a Clerk account.
+- CORS support (`CORS_ORIGINS`) and a working `docker-compose` stack (Postgres + backend-with-migrations + frontend) for one-command local runs.
 
 ### Changed
 - Authentication delegated to Clerk as the identity provider (see ADR-0006). RBAC and multi-tenant isolation are unchanged.
+- Backend `Dockerfile` rewritten to use `uv` and run migrations on start; root `docker-compose.yml` now defines the full stack.
 - Existing auth/RBAC/tenant endpoints now emit the standard error envelope automatically (HTTPExceptions are translated centrally — no router changes).
 
 ### Removed

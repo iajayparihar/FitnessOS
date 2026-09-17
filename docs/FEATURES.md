@@ -12,29 +12,31 @@ This file is the single source of truth for what's actually built vs. planned. U
 | Feature | Status | Notes |
 |---|---|---|
 | Project scaffolding (Docker, CI/CD) | ⬜ | Phase 2 |
-| Authentication (JWT, refresh tokens) | ⬜ | Phase 2 |
-| Email verification | ⬜ | Phase 2 |
-| Password reset | ⬜ | Phase 2 |
-| Logging & monitoring setup | ⬜ | Phase 2 |
+| Authentication | ✅ | Clerk identity provider; JWT verification + JIT provisioning (see ADR-0006) |
+| Email verification | ✅ | Handled by Clerk |
+| Password reset | ✅ | Handled by Clerk |
+| Standard error envelope + request-id | ✅ | Centralized handlers per `ERROR_HANDLING.md`; `X-Request-ID` on every response |
+| Rate limiting | ✅ | Per-IP via `slowapi` |
+| Logging & monitoring setup | 🟨 | Basic logging + request-id done; full observability (Sentry/metrics) pending |
 
 ## Multi-Tenant Platform
 | Feature | Status | Notes |
 |---|---|---|
-| Tenant onboarding/signup | ⬜ | Phase 3 |
+| Tenant onboarding/signup | ✅ | `/auth/onboarding` (create org + owner) + `/auth/invites/accept` |
 | Subscription/plan management | ⬜ | Phase 3 |
-| Tenant branding/settings | ⬜ | Phase 3 |
-| RBAC roles & permissions | ⬜ | Phase 3 |
+| Tenant branding/settings | 🟨 | Org create/list implemented; branding/settings endpoints pending |
+| RBAC roles & permissions | ✅ | Roles, permissions, `require_permission`, audit trail |
 
 ## CRM
 | Feature | Status | Notes |
 |---|---|---|
-| Lead capture (manual, walk-in) | ⬜ | Phase 4 |
-| Trial management | ⬜ | Phase 4 |
-| Follow-up / call & visit reminders | ⬜ | Phase 4 |
-| Lead sources tracking | ⬜ | Phase 4 |
-| Lead conversion tracking | ⬜ | Phase 4 |
-| Lost-lead reason tracking | ⬜ | Phase 4 |
-| CRM reports | ⬜ | Phase 4 |
+| Lead capture (manual, walk-in) | ✅ | `POST /crm/leads`, list/get/update with filters + pagination |
+| Trial management | ⬜ | Phase 4 (lead status supports `trial`; dedicated flow pending) |
+| Follow-up / call & visit reminders | 🟨 | Follow-up create/list/complete done; automated reminders (Phase 13) pending |
+| Lead sources tracking | ✅ | `GET/POST /crm/lead-sources` |
+| Lead conversion tracking | ✅ | `POST /crm/leads/{id}/convert` |
+| Lost-lead reason tracking | ✅ | `POST /crm/leads/{id}/lost` |
+| CRM reports | ⬜ | Phase 4 / Phase 10 |
 
 ## Membership
 | Feature | Status | Notes |

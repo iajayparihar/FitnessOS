@@ -13,9 +13,12 @@ Categories used: `Added`, `Changed`, `Fixed`, `Removed`, `Security`, `Docs`.
 ### Added
 - Clerk-based authentication: backend verifies Clerk session JWTs and provisions users just-in-time; `POST /auth/onboarding` (create org + become owner) and `POST /auth/invites/accept` (join via invite) endpoints.
 - In-app API rate limiting (`slowapi`), with a tighter limit on onboarding/invite endpoints.
+- Standard error envelope (`{"error": {code, message, details, request_id}}`) via centralized exception handlers, plus a request-id middleware that sets `X-Request-ID` on every response.
+- CRM module (Phase 4): lead sources, leads (create, list with filters + pagination, get, update, convert, mark-lost), and follow-ups (schedule, list, complete). New `crm:read` permission.
 
 ### Changed
 - Authentication delegated to Clerk as the identity provider (see ADR-0006). RBAC and multi-tenant isolation are unchanged.
+- Existing auth/RBAC/tenant endpoints now emit the standard error envelope automatically (HTTPExceptions are translated centrally — no router changes).
 
 ### Removed
 - Custom self-issued JWT/refresh-token auth, PBKDF2 password hashing, password login/register/refresh/logout endpoints, and the `sessions` table (password reset, email verification, MFA, and login lockout are now handled by Clerk).
@@ -26,6 +29,7 @@ Categories used: `Added`, `Changed`, `Fixed`, `Removed`, `Security`, `Docs`.
 ### Docs
 - Added full project documentation set: `README.md`, `CLAUDE.md`, `PRD.md`, `ARCHITECTURE.md`, `TECH_STACK.md`, `DATABASE.md`, `API.md`, `CODING_STANDARDS.md`, `FOLDER_STRUCTURE.md`, `SECURITY.md`, `DEPLOYMENT.md`, `TESTING.md`, `FEATURES.md`, `ROADMAP.md`, `CHANGELOG.md`, `DECISIONS.md`, `ENVIRONMENT.md`, `ERROR_HANDLING.md`, `OBSERVABILITY.md`, `CONTRIBUTING.md`.
 - Updated `SECURITY.md`, `ENVIRONMENT.md`, and added ADR-0006 for the Clerk auth model.
+- Added CRM error codes to `ERROR_HANDLING.md`; updated `FEATURES.md` for the CRM endpoints and the error/request-id foundation.
 
 ---
 

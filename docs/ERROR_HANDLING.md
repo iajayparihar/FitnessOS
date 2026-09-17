@@ -53,6 +53,15 @@
 
 New module-specific codes should extend this list (e.g., `PAYMENT_GATEWAY_ERROR`, `MEMBERSHIP_ALREADY_ACTIVE`) — document additions here as they're introduced, grouped by module.
 
+### Module-Specific Codes
+
+**CRM**
+
+| Code | HTTP Status | Meaning |
+|---|---|---|
+| `LEAD_ALREADY_CONVERTED` | 422 | The lead has already been converted and can't be re-converted or marked lost |
+| `FOLLOW_UP_ALREADY_COMPLETED` | 422 | The follow-up is already completed |
+
 ---
 
 ## 4. Backend Implementation Pattern
